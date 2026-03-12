@@ -22,4 +22,4 @@ COPY --from=builder /app/pnpm-workspace.yaml ./
 COPY --from=builder /app/pnpm-lock.yaml ./
 RUN pnpm install --prod --no-frozen-lockfile --ignore-scripts
 EXPOSE 3000
-CMD ["node", "apps/api/dist/main"]
+CMD ["sh", "-c", "npx prisma migrate deploy && npx prisma db seed && node apps/api/dist/main"]
