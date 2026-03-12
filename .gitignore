@@ -10,3 +10,41 @@ logs/
 .DS_Store
 *.sqlite
 *.db
+
+# Non-Production / Reference Only
+.gsd/
+adapters/
+ai/
+tmp/
+notebooks/
+playground/
+prompts/
+scripts/
+docs/
+*.har
+roadmap.md
+gsd-style.md
+presentation.md
+implementation_plan.md
+walkthrough.md
+auth-hardening.md
+deployment.md
+hosted_validation.md
+demo_checklist.md
+backup_plan.md
+presenter_runbook.md
+deployment_status.md
+production_urls.md
+STATE.md
+COMPREHENSIVE_PROGRESS.md
+task.md
+*.log
+Flowchart/
+HAILO/
+Infection Classification/
+KRISHI-EYE_Evaluation_Package/
+Leaf Segmentation/
+Lesion Segmentation/
+stereo_calib/
+test Project/
+venv/
