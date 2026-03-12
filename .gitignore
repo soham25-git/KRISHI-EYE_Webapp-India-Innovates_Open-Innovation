@@ -1,50 +1,89 @@
+# === Dependencies ===
 node_modules/
-.env*
+.pnp
+.pnp.js
+
+# === Build Output ===
 dist/
 build/
 .next/
-.agent/
-.gemini/
+out/
+*.tsbuildinfo
+
+# === Environment & Secrets ===
+.env
+.env.*
+!.env.example
+
+# === OS & Editor ===
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# === Logs & Debug ===
 logs/
 *.log
-.DS_Store
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# === Database ===
 *.sqlite
 *.db
+*.db-journal
 
-# Non-Production / Reference Only
+# === Python Bytecode ===
+__pycache__/
+*.pyc
+*.pyo
+
+# === Agent / AI Dev Tools ===
+.agent/
+.gemini/
 .gsd/
+
+# === Internal / Reference-Only (local dev support) ===
 adapters/
-ai/
-tmp/
-notebooks/
-playground/
 prompts/
 scripts/
 docs/
-*.har
-roadmap.md
-gsd-style.md
-presentation.md
-implementation_plan.md
-walkthrough.md
-auth-hardening.md
-deployment.md
-hosted_validation.md
-demo_checklist.md
-backup_plan.md
-presenter_runbook.md
-deployment_status.md
-production_urls.md
-STATE.md
+automation/
+
+# === Non-Production Root Markdown ===
 COMPREHENSIVE_PROGRESS.md
-task.md
-*.log
-Flowchart/
-HAILO/
-Infection Classification/
-KRISHI-EYE_Evaluation_Package/
-Leaf Segmentation/
-Lesion Segmentation/
-stereo_calib/
-test Project/
-venv/
+GSD-STYLE.md
+PRESENTATION.md
+PROJECT_RULES.md
+ROADMAP.md
+SPEC.md
+STACK.md
+STATE.md
+walkthrough.md
+deployment-readiness.md
+model_capabilities.yaml
+
+# === Non-Production App Docs ===
+apps/ai-service/EVALUATION.md
+apps/ai-service/INTEGRATION.md
+apps/api/TEST_PLAN.md
+apps/api/compile_errors.txt
+apps/api/compile_errors_utf8.txt
+apps/api/fix_imports.js
+
+# === Mobile (not in Webapp deployment) ===
+apps/mobile/
+
+# === Temporary / Audit ===
+repo_audit/
+tracked_files_remote.txt
+remote_tree.txt
+
+# Internal dev docs in app folders
+apps/web/demo.md
+apps/web/deployment.md
+apps/web/release_validation.md
+apps/api/TEST_PLAN.md
+apps/api/compile_errors*
+apps/api/fix_imports.js
+apps/api/scripts/
