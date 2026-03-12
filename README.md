@@ -6,8 +6,8 @@ Mobile-first precision agriculture platform for Indian farmers, with a companion
 
 | Interface | Purpose | Technology |
 |-----------|---------|------------|
-| **Mobile App** | Farmer-facing field tool — capture, detect, advise | Expo React Native |
-| **Web Dashboard** | Monitoring, demo, and review interface | Next.js (App Router) |
+| **Mobile App** | Farmer-facing field tool — capture, detect, advise | Expo 55 (React Native 0.83) |
+| **Web Dashboard** | Monitoring, demo, and review interface | Next.js 14+ (React 19, App Router) |
 
 Both clients share a common backend API and AI service.
 

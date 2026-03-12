@@ -7,19 +7,20 @@
 - Dark theme with large touch targets
 
 ## Web Dashboard (`apps/web`)
-- Next.js 14.2 (App Router)
-- Tailwind CSS + shadcn/ui
+- Next.js (App Router, v16+)
+- React 19
+- Tailwind CSS v4 + shadcn/ui
 - PWA-ready
 - Responsive layout (desktop + mobile viewport)
 
 ## Backend API (`apps/api`)
-- NestJS 11 (modular architecture)
-- Prisma ORM (PostgreSQL)
+- NestJS v11 (modular architecture)
+- Prisma ORM v5 (PostgreSQL)
 - JWT authentication (HttpOnly secure cookies)
-- CORS + rate limiting + Helmet security headers
+- CORS + Helmet security headers
 
 ## AI Service (`apps/ai-service`)
-- FastAPI (async, high-throughput)
+- FastAPI v0.110+ (async, high-throughput)
 - RAG pipeline with PGVector
 - Grounded advisory with source citations
 - Safety abstention boundary
@@ -31,9 +32,9 @@
 
 ## Deployment
 
-| Service | Platform | Root Dir | Key Env Vars |
-|---------|----------|----------|--------------|
+| Service | Platform | Root Dir | Typical Env Vars |
+|---------|----------|----------|------------------|
 | Mobile | Expo (EAS Build) | `apps/mobile` | `API_URL` |
 | Web | Vercel | `apps/web` | `NEXT_PUBLIC_API_URL` |
-| API | Render | `apps/api` | `DATABASE_URL`, `JWT_SECRET` |
-| AI | Render | `apps/ai-service` | `LLM_API_KEY` |
+| API | Render | `apps/api` | `DATABASE_URL`, `JWT_SECRET`, `NODE_ENV` |
+| AI | Render | `apps/ai-service` | `LLM_API_KEY`, `POSTGRES_USER` |

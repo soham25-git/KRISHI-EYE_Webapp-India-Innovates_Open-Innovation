@@ -5,11 +5,11 @@
 ```mermaid
 graph LR
     subgraph Clients
-        Mobile[Mobile App<br/>Expo React Native]
-        Web[Web Dashboard<br/>Next.js]
+        Mobile[Mobile App<br/>Expo 55]
+        Web[Web Dashboard<br/>Next.js 14+]
     end
     subgraph Backend
-        API[NestJS API]
+        API[NestJS 11 API]
         AI[FastAPI RAG Service]
     end
     subgraph AI Pipeline
