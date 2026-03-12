@@ -13,7 +13,7 @@ graph LR
         AI[FastAPI RAG Service]
     end
     subgraph AI Pipeline
-        CV[CV Models]
+        CV[CV Pipeline<br/>YOLOv8n-seg + MobileNetV2 + U-Net]
         KB[PGVector Knowledge Base]
     end
     Mobile --> API
