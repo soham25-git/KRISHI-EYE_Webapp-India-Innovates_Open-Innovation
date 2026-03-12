@@ -11,7 +11,7 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/api/package.json ./apps/api/
 
 # Install dependencies (ignoring scripts to avoid premature prisma generate if schema is missing)
-RUN pnpm install --frozen-lockfile --ignore-scripts
+RUN pnpm install --frozen-lockfile no---ignore-scripts
 
 # Copy the rest of the backend source
 COPY apps/api/ ./apps/api/
