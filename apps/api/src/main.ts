@@ -49,7 +49,8 @@ async function bootstrap() {
         'https://krishieye.app', 
         'https://app.krishieye.app', 
         'https://krishieye.vercel.app',
-        /\.vercel\.app$/ // Allow all Vercel previews
+        /\.vercel\.app$/, // Allow all Vercel previews
+        /\.onrender\.com$/ // Allow Render services
       ]
     : [
         'http://localhost:3000', 
@@ -65,7 +66,7 @@ async function bootstrap() {
   });
 
   const port = process.env.PORT ?? 3000;
-  await app.listen(port);
-  console.log(`🚀 API is running on: http://localhost:${port}/api/docs`);
+  await app.listen(port, '0.0.0.0');
+  console.log(`🚀 API is running on: http://0.0.0.0:${port}/api/docs`);
 }
 bootstrap();

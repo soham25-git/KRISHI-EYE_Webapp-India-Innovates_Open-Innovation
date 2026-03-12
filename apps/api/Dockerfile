@@ -8,7 +8,8 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # Copy monorepo config
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-COPY apps/api/package.json ./apps/api/ package.json
+COPY apps/api/package.json ./apps/api/package.json
+COPY packages/ ./packages/
 
 # Install dependencies (ignoring scripts to avoid premature prisma generate if schema is missing)
 RUN pnpm install --frozen-lockfile --ignore-scripts
@@ -35,11 +36,11 @@ COPY --from=builder /app/pnpm-lock.yaml ./
 COPY --from=builder /app/apps/api/package.json ./apps/api/
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
 
 WORKDIR /app/apps/api
-EXPOSE 3000
 
 ENV NODE_ENV=production
 
-# Start the NestJS backend
+# Start the NestJS backend (Render requires 0.0.0.0 binding, handled in main.ts)
 CMD ["node", "dist/main.js"]
