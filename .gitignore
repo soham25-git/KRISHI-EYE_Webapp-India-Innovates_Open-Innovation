@@ -71,8 +71,10 @@ apps/api/compile_errors.txt
 apps/api/compile_errors_utf8.txt
 apps/api/fix_imports.js
 
-# === Mobile (not in Webapp deployment) ===
-apps/mobile/
+# === Mobile Build Artifacts ===
+.expo/
+android/
+ios/
 
 # === Temporary / Audit ===
 repo_audit/
