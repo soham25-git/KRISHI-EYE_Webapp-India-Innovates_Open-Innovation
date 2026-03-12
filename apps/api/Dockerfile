@@ -4,6 +4,7 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@latest --activate
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/api/package.json ./apps/api/
+COPY packages/ ./packages/
 RUN pnpm install --no-frozen-lockfile --ignore-scripts
 COPY apps/api/ ./apps/api/
 WORKDIR /app/apps/api
