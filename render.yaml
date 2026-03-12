@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: krishi-eye-api
+    env: docker
+    dockerfilePath: apps/api/Dockerfile
+    plan: free
+    region: singapore
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: NODE_ENV
+        value: production

@@ -1,0 +1,12 @@
+node_modules/
+.env*
+dist/
+build/
+.next/
+.agent/
+.gemini/
+logs/
+*.log
+.DS_Store
+*.sqlite
+*.db

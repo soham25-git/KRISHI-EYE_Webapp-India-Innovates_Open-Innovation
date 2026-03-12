@@ -1,0 +1,46 @@
+name: API Endpoint Health Checks
+
+on:
+  schedule:
+    - cron: '17,47 * * * *' # Run at odd times (17 and 47 mins past hour)
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Basic Smoke Test (cURL)
+        env:
+          PROD_API_BASE_URL: ${{ secrets.PROD_API_BASE_URL }}
+          HEALTH_CHECK_JWT: ${{ secrets.HEALTH_CHECK_JWT }}
+        run: |
+          echo "Testing Auth Endpoint..."
+          curl -f -X GET "$PROD_API_BASE_URL/api/v1/auth/sessions" \
+            -H "Authorization: Bearer $HEALTH_CHECK_JWT" \
+            -H "X-Replay-Protection: $(date +%s)"
+          
+          echo "Testing AI Chat Ready..."
+          curl -f -X GET "$PROD_API_BASE_URL/api/v1/me" \
+            -H "Authorization: Bearer $HEALTH_CHECK_JWT"
+
+      - name: Playwright Smoke Tests (Optional/Future)
+        if: always()
+        run: |
+          echo "Running detailed playwright tests..."
+          # npx playwright test tests/smoke
+
+      - name: Notify on Failure
+        if: failure()
+        env:
+          N8N_FAILURE_WEBHOOK: ${{ secrets.N8N_FAILURE_WEBHOOK }}
+          GITHUB_EVENT_CONTEXT: ${{ toJson(github) }}
+        run: |
+          curl -X POST "$N8N_FAILURE_WEBHOOK" \
+            -H "Content-Type: application/json" \
+            -H "X-N8N-Auth: ${{ secrets.N8N_WEBHOOK_SECRET }}" \
+            -d "$GITHUB_EVENT_CONTEXT"

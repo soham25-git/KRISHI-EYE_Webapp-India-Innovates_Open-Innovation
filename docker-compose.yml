@@ -1,0 +1,24 @@
+# Local PostgreSQL with PostGIS and pgvector
+# Image: postgis/postgis (includes both)
+
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: krishi-eye-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: krishi_eye
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  pgdata:

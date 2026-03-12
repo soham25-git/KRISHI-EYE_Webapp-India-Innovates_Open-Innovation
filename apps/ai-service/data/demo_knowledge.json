@@ -1,0 +1,38 @@
+[
+  {
+    "id": "ks-icar-wheat-001",
+    "title": "Wheat Yellow Rust Management (ICAR-IIWBR)",
+    "category": "pest_control",
+    "crop": "wheat",
+    "state": "National",
+    "content": "Yellow rust (Puccinia striiformis) is a major fungal disease in the North Western Reform Plain Zone. Symptoms include yellow pustules in linear rows (stripes) on leaves. Management: Apply Propiconazole 25 EC @ 0.1% (1ml in 1 liter of water) or Tebuconazole 250 EC @ 0.1%. Ensure specialized boom sprayers maintain a speed of 4-6 km/h for uniform coverage.",
+    "updated_at": "2024-01-15T10:00:00Z"
+  },
+  {
+    "id": "ks-icar-mustard-001",
+    "title": "Mustard Aphid Control (DRMR)",
+    "category": "pest_control",
+    "crop": "mustard",
+    "state": "Rajasthan",
+    "content": "Aphids (Lipaphis erysimi) cause significant yield loss. Economic Threshold Level (ETL): 20-25 aphids per 10 cm terminal shoot. Management: Spray Oxydemeton methyl 25 EC @ 0.025% or Dimethoate 30 EC @ 0.03%. Prefer spraying in late afternoons to protect honeybee pollinators.",
+    "updated_at": "2023-11-20T08:00:00Z"
+  },
+  {
+    "id": "ks-icar-rice-001",
+    "title": "Rice Blast Management (ICAR-NRRI)",
+    "category": "pest_control",
+    "crop": "rice",
+    "state": "National",
+    "content": "Rice blast (Magnaporthe oryzae) affects leaves, nodes, and panicles. Symptoms: Diamond-shaped lesions with gray centers. Early management: Avoid excessive Nitrogen. Spray Tricyclazole 75 WP @ 0.6 g/L or Carbendazim 50 WP @ 1.0 g/L.",
+    "updated_at": "2024-02-10T14:30:00Z"
+  },
+  {
+    "id": "ks-gov-safety-001",
+    "title": "Precision Spraying & Safety (CIBRC)",
+    "category": "safety",
+    "crop": "general",
+    "state": "National",
+    "content": "Pesticide Application Safety: 1. Use Personal Protective Equipment (PPE). 2. Calibrate boom sprayers weekly. 3. Check nozzle health. 4. Wind speed must be below 10 km/h to prevent drift. 5. Maintain boom height exactly 50 cm above crop canopy for 110-degree flat fan nozzles.",
+    "updated_at": "2024-01-01T09:00:00Z"
+  }
+]

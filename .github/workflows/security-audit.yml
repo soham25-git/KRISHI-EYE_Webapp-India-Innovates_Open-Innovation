@@ -1,0 +1,54 @@
+name: Weekly Security and Ingestion Audit
+
+on:
+  schedule:
+    - cron: '43 23 * * 0' # 11:43 PM Sunday
+  workflow_dispatch:
+
+jobs:
+  audit-report:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch Audit Logs
+        env:
+          PROD_API_BASE_URL: ${{ secrets.PROD_API_BASE_URL }}
+          AUDIT_LOG_TOKEN: ${{ secrets.AUDIT_LOG_TOKEN }}
+        run: |
+          mkdir reports
+          # Querying the admin audit logs endpoint for weekly violations or failures
+          # Using a time window of last 7 days
+          QUERY_WINDOW=$(date -d "7 days ago" +%Y-%m-%dT%H:%M:%SZ)
+          curl -f -G "$PROD_API_BASE_URL/api/v1/admin/audit-logs" \
+            -d "from=$QUERY_WINDOW" \
+            -H "Authorization: Bearer $AUDIT_LOG_TOKEN" \
+            -o reports/audit-logs-raw.json
+
+      - name: Aggregate Failures
+        run: |
+          echo "Aggregating security and ingestion failures..."
+          # Logic to filter failed ingestion and security check summaries
+          # (e.g., jq, grep, etc.)
+          grep -i "fail" reports/audit-logs-raw.json || echo "No failures found this week."
+
+      - name: Generate Summary Report
+        run: |
+          echo "# Weekly Security & Ingestion Audit for KRISHi-EYE" >> $GITHUB_STEP_SUMMARY
+          echo "Run on: $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "Status: COMPLETED" >> $GITHUB_STEP_SUMMARY
+
+      - name: Post to n8n for Long-Term Storage
+        if: always()
+        env:
+          N8N_AUDIT_REPORT_WEBHOOK: ${{ secrets.N8N_AUDIT_REPORT_WEBHOOK }}
+          REPORT_PAYLOAD: reports/audit-logs-raw.json
+        run: |
+           # Send raw results for archival in database/sheet
+           curl -X POST "$N8N_AUDIT_REPORT_WEBHOOK" \
+             -H "Content-Type: application/json" \
+             -H "X-N8N-Auth: ${{ secrets.N8N_WEBHOOK_SECRET }}" \
+             --data-binary "@$REPORT_PAYLOAD"
