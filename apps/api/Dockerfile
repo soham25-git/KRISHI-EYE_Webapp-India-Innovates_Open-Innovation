@@ -8,7 +8,7 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # Copy monorepo config
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-COPY apps/api/package.json ./apps/api/ package.json
+COPY apps/api/package.json ./apps/api/
 
 # Install dependencies (ignoring scripts to avoid premature prisma generate if schema is missing)
 RUN pnpm install --frozen-lockfile --ignore-scripts
