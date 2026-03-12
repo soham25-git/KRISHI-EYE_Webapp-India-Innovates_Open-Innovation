@@ -6,7 +6,7 @@
 graph LR
     subgraph Clients
         Mobile[Mobile App<br/>Expo 55]
-        Web[Web Dashboard<br/>Next.js 14+]
+        Web[Web Dashboard<br/>Next.js 16]
     end
     subgraph Backend
         API[NestJS 11 API]

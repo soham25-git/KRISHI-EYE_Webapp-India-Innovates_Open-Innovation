@@ -1,13 +1,13 @@
 # 🛠️ Technology Stack
 
 ## Mobile App (`apps/mobile`)
-- Expo React Native
+- Expo 55 (React Native 0.83)
 - Tab-based navigation (Home, Map, Ask, Help, Profile)
 - Offline-first local data layer
 - Dark theme with large touch targets
 
 ## Web Dashboard (`apps/web`)
-- Next.js (App Router, v16+)
+- Next.js 16 (App Router)
 - React 19
 - Tailwind CSS v4 + shadcn/ui
 - PWA-ready
@@ -37,4 +37,4 @@
 | Mobile | Expo (EAS Build) | `apps/mobile` | `API_URL` |
 | Web | Vercel | `apps/web` | `NEXT_PUBLIC_API_URL` |
 | API | Render | `apps/api` | `DATABASE_URL`, `JWT_SECRET`, `NODE_ENV` |
-| AI | Render | `apps/ai-service` | `LLM_API_KEY`, `POSTGRES_USER` |
+| AI | Render | `apps/ai-service` | `DATABASE_URL`, `LLM_API_KEY`, `ALLOWED_ORIGINS` |

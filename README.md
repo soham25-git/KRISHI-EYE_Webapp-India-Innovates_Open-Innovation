@@ -7,7 +7,7 @@ Mobile-first precision agriculture platform for Indian farmers, with a companion
 | Interface | Purpose | Technology |
 |-----------|---------|------------|
 | **Mobile App** | Farmer-facing field tool — capture, detect, advise | Expo 55 (React Native 0.83) |
-| **Web Dashboard** | Monitoring, demo, and review interface | Next.js 14+ (React 19, App Router) |
+| **Web Dashboard** | Monitoring, demo, and review interface | Next.js 16 (React 19, App Router) |
 
 Both clients share a common backend API and AI service.
 
@@ -32,12 +32,12 @@ KRISHI-EYE uses a multi-stage vision pipeline for disease detection and targeted
 
 ```mermaid
 graph TB
-    Farmer[Farmer in Field] --> Mobile[Mobile App<br/>Expo React Native]
-    Judge[Reviewer / Judge] --> Web[Web Dashboard<br/>Next.js PWA]
+    Farmer[Farmer in Field] --> Mobile[Mobile App<br/>Expo 55]
+    Judge[Reviewer / Judge] --> Web[Web Dashboard<br/>Next.js 16]
     Mobile --> API[NestJS API]
     Web --> API
     API --> AI[FastAPI RAG Service]
-    AI --> CV[CV Pipeline<br/>YOLOv8n + MobileNetV2 + U-Net]
+    AI --> CV[CV Pipeline<br/>YOLOv8n-seg + MobileNetV2 + U-Net]
     AI --> VectorDB[PGVector<br/>Knowledge Base]
 ```
 
