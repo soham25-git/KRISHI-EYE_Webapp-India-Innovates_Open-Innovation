@@ -20,11 +20,10 @@ export async function apiRequest<T>(
     });
 
     if (!response.ok) {
-        if (response.status === 401) {
-            if (typeof window !== 'undefined') {
-                window.location.href = '/login';
-            }
-        }
+        // NOTE: Do NOT redirect on 401 here. The dashboard layout handles
+        // auth redirects via router.push (soft navigation). Using
+        // window.location.href caused infinite reload loops because
+        // AuthProvider's session check always triggers on mount.
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || 'API request failed');
     }
