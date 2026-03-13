@@ -7,13 +7,16 @@ ONNX inference pipeline for plant disease detection using:
 - yolov8-seg.onnx: Object detection + instance segmentation
 
 Pipeline: Image → Classify → Segment lesions → Annotate → Advisory
+
+NOTE: All heavy dependencies (numpy, onnxruntime, Pillow) are imported
+lazily inside methods. This ensures the service boots successfully even
+if vision dependencies are not installed, and fails gracefully per-request.
 """
 
 import os
 import io
 import base64
 import logging
-import numpy as np
 from uuid import uuid4
 from typing import Optional, List, Dict, Any
 from pathlib import Path
@@ -103,8 +106,9 @@ class VisionAnalysisService:
             logger.error(self._init_error, exc_info=True)
             self._initialized = True
 
-    def _preprocess_for_classifier(self, image_bytes: bytes) -> np.ndarray:
+    def _preprocess_for_classifier(self, image_bytes: bytes):
         """Preprocess image for MobileNetV2 classifier (224x224, ImageNet normalization)."""
+        import numpy as np
         from PIL import Image
 
         img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
@@ -120,8 +124,9 @@ class VisionAnalysisService:
         arr = np.transpose(arr, (2, 0, 1))
         return np.expand_dims(arr, axis=0)
 
-    def _preprocess_for_segmentation(self, image_bytes: bytes, target_size: int = 256) -> np.ndarray:
+    def _preprocess_for_segmentation(self, image_bytes: bytes, target_size: int = 256):
         """Preprocess image for UNet segmentation."""
+        import numpy as np
         from PIL import Image
 
         img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
@@ -134,6 +139,8 @@ class VisionAnalysisService:
 
     def _classify(self, image_bytes: bytes) -> Dict[str, Any]:
         """Run disease classification."""
+        import numpy as np
+
         if not self.classifier_session:
             return {"class": "unknown", "confidence": 0.0, "error": "Classifier not loaded"}
 
@@ -159,6 +166,8 @@ class VisionAnalysisService:
 
     def _segment_lesions(self, image_bytes: bytes) -> Dict[str, Any]:
         """Run lesion segmentation to get pixel-level mask."""
+        import numpy as np
+
         if not self.segmentation_session:
             return {"mask": None, "area_percent": 0.0, "error": "Segmentation model not loaded"}
 
@@ -183,15 +192,16 @@ class VisionAnalysisService:
                 binary_mask = mask > 0.5
 
             area_percent = float(np.sum(binary_mask) / binary_mask.size * 100)
-            return {"mask": binary_mask, "area_percent": round(area_percent, 1)}
+            return {"mask": binary_mask, "area_percent": round(float(area_percent), 1)}
 
         except Exception as e:
             logger.error(f"Segmentation failed: {e}", exc_info=True)
             return {"mask": None, "area_percent": 0.0, "error": str(e)}
 
-    def _generate_annotated_image(self, image_bytes: bytes, mask: Optional[np.ndarray], disease_class: str) -> str:
+    def _generate_annotated_image(self, image_bytes: bytes, mask, disease_class: str) -> str:
         """Overlay segmentation mask onto original image and return base64."""
-        from PIL import Image, ImageDraw, ImageFont
+        import numpy as np
+        from PIL import Image, ImageDraw
 
         img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
         original_size = img.size
@@ -214,13 +224,13 @@ class VisionAnalysisService:
 
             # Add border and label
             draw = ImageDraw.Draw(img)
-            label = f"⚠ {disease_class.replace('_', ' ')} Detected"
+            label = f"Disease: {disease_class.replace('_', ' ')} Detected"
             draw.rectangle([(0, 0), (original_size[0], 36)], fill=(239, 68, 68))
             draw.text((10, 8), label, fill=(255, 255, 255))
         else:
             # Healthy: add a green border/label
             draw = ImageDraw.Draw(img)
-            label = "✓ Healthy — No Disease Detected"
+            label = "Healthy - No Disease Detected"
             draw.rectangle([(0, 0), (original_size[0], 36)], fill=(16, 185, 129))
             draw.text((10, 8), label, fill=(255, 255, 255))
 
@@ -230,7 +240,7 @@ class VisionAnalysisService:
         return base64.b64encode(buffer.getvalue()).decode("utf-8")
 
     async def analyze(self, image_bytes: bytes, filename: str = "") -> Dict[str, Any]:
-        """Full analysis pipeline: classify → segment → annotate → advise."""
+        """Full analysis pipeline: classify -> segment -> annotate -> advise."""
         self._lazy_init()
 
         if self._init_error:
@@ -285,14 +295,14 @@ class VisionAnalysisService:
         if status == "infected":
             detections.append({
                 "class": disease_class.replace("_", " "),
-                "confidence": round(confidence, 3),
+                "confidence": round(float(confidence), 3),
                 "area_percent": segmentation.get("area_percent", 0.0)
             })
 
         return {
             "analysis_id": analysis_id,
             "status": status,
-            "confidence": round(confidence, 3),
+            "confidence": round(float(confidence), 3),
             "annotated_image": annotated_b64,
             "detections": detections,
             "classification": {

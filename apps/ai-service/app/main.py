@@ -36,8 +36,13 @@ app.add_middleware(
 from app.api.routes import router as api_router
 app.include_router(api_router)
 
-from app.vision.routes import router as vision_router
-app.include_router(vision_router)
+try:
+    from app.vision.routes import router as vision_router
+    app.include_router(vision_router)
+    logger.info("Vision analysis routes registered successfully.")
+except Exception as e:
+    logger.warning(f"Vision routes not available (non-fatal): {e}")
+
 
 @app.get("/health", tags=["System"])
 async def health_check():
