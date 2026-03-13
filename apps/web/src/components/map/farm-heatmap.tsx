@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Tractor, Info, Clock, CheckCircle2, RotateCcw } from 'lucide-react';
+import { Tractor, Info, Clock, CheckCircle2, RotateCcw, X } from 'lucide-react';
 
 type HealthClass = 'Healthy' | 'Fungi' | 'Bacteria' | 'Virus' | 'Phytophthora' | 'Pests' | 'Nematodes';
 type PlotState = 'unscanned' | 'scanned' | 'treated';
@@ -69,10 +69,14 @@ export function FarmHeatmap() {
   const [plots, setPlots] = useState<Plot[]>([]);
   const [tractorPos, setTractorPos] = useState({ x: 0, y: ROAD_ROW });
   const [hoveredPlot, setHoveredPlot] = useState<Plot | null>(null);
+  const [selectedPlot, setSelectedPlot] = useState<Plot | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [sectionNumber, setSectionNumber] = useState(1);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const tractorPosRef = useRef({ x: 0, y: ROAD_ROW });
+
+  // Mobile tap takes priority over desktop hover
+  const inspectedPlot = selectedPlot || hoveredPlot;
 
   // Initialize
   useEffect(() => {
@@ -220,16 +224,23 @@ export function FarmHeatmap() {
                   key={plot.id}
                   onMouseEnter={() => setHoveredPlot(plot)}
                   onMouseLeave={() => setHoveredPlot(null)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedPlot(prev => prev?.id === plot.id ? null : plot);
+                  }}
                   className={`
                     relative w-full h-full cursor-pointer flex items-center justify-center
                     transition-all duration-700
                     ${isRoad ? 'rounded-none' : 'rounded-full scale-95'}
                     ${plot.state === 'unscanned' && !isRoad ? 'opacity-30' : 'opacity-100'}
+                    ${selectedPlot?.id === plot.id ? 'ring-2 ring-offset-1' : ''}
                   `}
                   style={{
                     backgroundColor: bgColor,
                     borderTop: isRoad ? '1px solid var(--border)' : undefined,
                     borderBottom: isRoad ? '1px solid var(--border)' : undefined,
+                    touchAction: 'manipulation',
+                    ...(selectedPlot?.id === plot.id ? { ringColor: 'var(--primary)' } : {}),
                   }}
                 >
                   {hasTractor && (
@@ -302,24 +313,34 @@ export function FarmHeatmap() {
           <div className="mt-auto pt-4" style={{ borderTop: '1px solid var(--border)' }}>
             <h4 className="text-sm font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--muted-foreground)' }}>Plot Inspector</h4>
             <div className="min-h-[88px]">
-              {hoveredPlot && hoveredPlot.y !== ROAD_ROW ? (
+              {inspectedPlot && inspectedPlot.y !== ROAD_ROW ? (
                 <div className="space-y-3 p-3 rounded-lg" style={{ background: 'var(--surface-alt)', border: '1px solid var(--border)' }}>
+                  {selectedPlot && (
+                    <button
+                      onClick={() => setSelectedPlot(null)}
+                      className="float-right p-1 rounded-md touch-target flex items-center justify-center"
+                      style={{ color: 'var(--muted-foreground)', background: 'var(--surface-hover)' }}
+                      aria-label="Clear selection"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
                   <div className="flex justify-between items-center">
                     <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Location</span>
                     <span className="text-xs font-mono px-2 py-0.5 rounded" style={{ color: 'var(--foreground)', background: 'var(--background)', border: '1px solid var(--border)' }}>
-                      R{hoveredPlot.y + 1} &times; C{hoveredPlot.x + 1}
+                      R{inspectedPlot.y + 1} &times; C{inspectedPlot.x + 1}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Diagnosis</span>
-                    {hoveredPlot.state === 'unscanned' ? (
+                    {inspectedPlot.state === 'unscanned' ? (
                        <span className="text-xs font-semibold tracking-wide" style={{ color: 'var(--muted-foreground)' }}>PENDING SCAN</span>
                     ) : (
                        <span className="inline-flex items-center gap-1 rounded-full border bg-transparent px-2 py-0.5 text-xs font-semibold" style={{
-                         borderColor: HEALTH_COLORS[hoveredPlot.health],
-                         color: hoveredPlot.state === 'treated' ? 'var(--muted-foreground)' : HEALTH_COLORS[hoveredPlot.health]
+                         borderColor: HEALTH_COLORS[inspectedPlot.health],
+                         color: inspectedPlot.state === 'treated' ? 'var(--muted-foreground)' : HEALTH_COLORS[inspectedPlot.health]
                        }}>
-                        {HEALTH_PATTERNS[hoveredPlot.health]} {hoveredPlot.health} {hoveredPlot.state === 'treated' && '(Treated)'}
+                        {HEALTH_PATTERNS[inspectedPlot.health]} {inspectedPlot.health} {inspectedPlot.state === 'treated' && '(Treated)'}
                       </span>
                     )}
                   </div>
@@ -331,7 +352,7 @@ export function FarmHeatmap() {
                   border: '1px dashed var(--border)'
                 }}>
                   <Info className="w-4 h-4 shrink-0" />
-                  Hover over map to inspect
+                  Tap or hover over map to inspect
                 </div>
               )}
             </div>

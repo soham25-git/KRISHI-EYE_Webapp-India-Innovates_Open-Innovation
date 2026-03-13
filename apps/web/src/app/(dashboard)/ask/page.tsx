@@ -123,7 +123,7 @@ export default function AskAIPage() {
     }
 
     return (
-        <div className="flex flex-col h-[calc(100vh-72px)] md:h-screen w-full max-w-5xl mx-auto" style={{ background: 'var(--background)' }}>
+        <div className="flex flex-col flex-1 w-full max-w-5xl mx-auto" style={{ background: 'var(--background)' }}>
             {/* Header */}
             <div className="flex h-16 shrink-0 items-center justify-between px-6" style={{ borderBottom: '1px solid var(--border)' }}>
                 <div className="flex items-center gap-3">
@@ -139,20 +139,20 @@ export default function AskAIPage() {
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => setShowScanner(!showScanner)}
-                        className="flex items-center text-xs gap-1.5 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                        className="flex items-center text-xs gap-1.5 px-3 py-2.5 rounded-lg transition-colors cursor-pointer touch-target"
                         style={{
                             color: showScanner ? 'var(--primary-foreground)' : 'var(--muted-foreground)',
                             background: showScanner ? 'var(--primary)' : 'var(--surface-alt)'
                         }}
                     >
-                        <Camera className="h-3 w-3" /> Scan Leaf
+                        <Camera className="h-4 w-4" /> Scan Leaf
                     </button>
                     <button
                         onClick={resetHistory}
-                        className="flex items-center text-xs gap-1.5 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                        className="flex items-center text-xs gap-1.5 px-3 py-2.5 rounded-lg transition-colors cursor-pointer touch-target"
                         style={{ color: 'var(--muted-foreground)', background: 'var(--surface-alt)' }}
                     >
-                        <RefreshCw className="h-3 w-3" /> Reset
+                        <RefreshCw className="h-4 w-4" /> Reset
                     </button>
                 </div>
             </div>
@@ -261,8 +261,8 @@ export default function AskAIPage() {
                 )}
             </div>
 
-            {/* Input bar */}
-            <div className="shrink-0 p-4" style={{ borderTop: '1px solid var(--border)', background: 'var(--surface)' }}>
+            {/* Input bar — sticky at bottom, keyboard-safe */}
+            <div className="shrink-0 p-3 sm:p-4 keyboard-safe" style={{ borderTop: '1px solid var(--border)', background: 'var(--surface)' }}>
                 <form onSubmit={handleSend} className="relative max-w-4xl mx-auto flex items-center">
                     <input
                         type="text"

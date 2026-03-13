@@ -64,7 +64,7 @@ export default function LoginPage() {
     }
 
     return (
-        <div className="flex min-h-screen items-center justify-center p-4" style={{ background: 'var(--background)' }}>
+        <div className="flex min-h-dvh items-center justify-center p-4" style={{ background: 'var(--background)' }}>
             {/* Subtle radial gradient background */}
             <div className="fixed inset-0 pointer-events-none" style={{
                 background: 'radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--primary) 8%, transparent) 0%, transparent 60%)'
