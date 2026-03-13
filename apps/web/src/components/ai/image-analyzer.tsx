@@ -76,7 +76,26 @@ export function ImageAnalyzer({ onClose }: ImageAnalyzerProps) {
                 throw new Error(errData.message || 'Analysis failed')
             }
 
-            const data: VisionResult = await resp.json()
+            const rawData = await resp.json()
+            
+            // Map the simplified backend payload into the frontend interface
+            const data: VisionResult = {
+                status: rawData.status || 'error',
+                confidence: rawData.confidence ? rawData.confidence / 100 : 0, // Backend returns 0-100, UI wants 0-1
+                annotated_image: rawData.annotated_image ? rawData.annotated_image.replace('data:image/jpeg;base64,', '') : undefined,
+                advisory: rawData.advisory,
+                detections: []
+            }
+
+            // Create a detection entry from the primary class
+            if (rawData.class) {
+                data.detections!.push({
+                    class: rawData.class,
+                    confidence: rawData.confidence ? rawData.confidence / 100 : 0,
+                    area_percent: rawData.lesion_area_percent || 0
+                })
+            }
+
             setResult(data)
         } catch (err: any) {
             setError(err.message || 'Failed to analyze image. Please try again.')
