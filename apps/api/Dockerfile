@@ -32,17 +32,19 @@ RUN apk add --no-cache openssl
 
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
-# Copy monorepo structure (no node_modules — reinstall fresh to avoid broken pnpm symlinks)
+# Copy package files first for dependency install
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/pnpm-workspace.yaml ./
 COPY --from=builder /app/pnpm-lock.yaml ./
 COPY --from=builder /app/packages ./packages
 COPY --from=builder /app/apps/api/package.json ./apps/api/package.json
-COPY --from=builder /app/apps/api/dist ./apps/api/dist
-COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
 
 # Install production deps fresh (fixes pnpm symlink issue)
 RUN pnpm install --prod --no-frozen-lockfile --ignore-scripts
+
+# Copy built artifacts AFTER pnpm install (pnpm may overwrite apps/api/ directory)
+COPY --from=builder /app/apps/api/dist ./apps/api/dist
+COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
 
 # Generate Prisma client in production image
 WORKDIR /app/apps/api
