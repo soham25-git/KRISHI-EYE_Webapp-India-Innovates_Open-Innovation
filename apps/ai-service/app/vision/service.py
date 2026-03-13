@@ -35,10 +35,10 @@ POTATO_CLASSES = [
     "Bacteria",
     "Fungi",
     "Healthy",
-    "Phytophthora",
+    "Nematode",
     "Pests",
-    "Virus",
-    "Unknown" # 7 classes total in the script, so adding a fallback 7th just in case
+    "Phytopthora",
+    "Virus" # 7 classes total in the script, so adding a fallback 7th just in case
 ]
 
 # Advisory mapping for detected diseases
