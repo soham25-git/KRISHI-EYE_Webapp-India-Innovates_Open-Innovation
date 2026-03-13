@@ -24,7 +24,7 @@ export class AuthService {
   ) { }
 
   private normalizePhone(phone: string): string {
-    const digits = phone.replace(/\\D/g, '');
+    const digits = phone.replace(/\D/g, '');
     if (digits.length === 10) return `+91${digits}`;
     if (digits.length === 12 && digits.startsWith('91')) return `+${digits}`;
     if (phone.startsWith('+') && digits.length === 12) return `+${digits}`;

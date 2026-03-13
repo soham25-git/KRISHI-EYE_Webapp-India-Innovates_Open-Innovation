@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
 
 @Entity('sessions')
 export class Session {
@@ -14,10 +14,10 @@ export class Session {
     @Column({ nullable: true })
     device_label: string;
 
-    @Column()
+    @Column({ nullable: true })
     ip_address: string;
 
-    @Column()
+    @Column({ nullable: true })
     user_agent: string;
 
     @Column()
@@ -28,7 +28,5 @@ export class Session {
 
     @CreateDateColumn()
     created_at: Date;
-
-    @UpdateDateColumn()
-    updated_at: Date;
 }
+
