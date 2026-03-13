@@ -6,7 +6,7 @@ import { OfflineBanner } from '../common/offline-banner'
 
 export function AppShell({ children }: { children: React.ReactNode }) {
     return (
-        <div className="flex h-screen w-full bg-[#0F1115]">
+        <div className="flex h-screen w-full theme-transition" style={{ background: 'var(--background)' }}>
             <Sidebar />
             <div className="flex flex-1 flex-col overflow-hidden relative">
                 <OfflineBanner />

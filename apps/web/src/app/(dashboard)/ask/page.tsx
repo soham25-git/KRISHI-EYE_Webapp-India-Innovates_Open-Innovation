@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Send, Sprout, AlertCircle, RefreshCw } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Send, Sprout, AlertCircle, RefreshCw, Loader2, MessageSquare, BookOpen } from 'lucide-react'
 import { apiRequest } from '@/lib/api-client'
 
 const formatTime = (dateString: string) => {
@@ -22,6 +22,8 @@ export default function AskAIPage() {
     const [input, setInput] = useState('')
     const [loading, setLoading] = useState(true)
     const [sending, setSending] = useState(false)
+    const [error, setError] = useState('')
+    const scrollRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
         const fetchHistory = async () => {
@@ -54,6 +56,12 @@ export default function AskAIPage() {
         fetchHistory();
     }, []);
 
+    useEffect(() => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+    }, [messages, sending]);
+
     const handleSend = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!input.trim() || sending) return
@@ -71,6 +79,7 @@ export default function AskAIPage() {
         setMessages((prev) => [...prev, newMsg])
         setInput('')
         setSending(true)
+        setError('')
 
         try {
             const aiResponse = await apiRequest<any>('/v1/ai/chat', {
@@ -89,8 +98,8 @@ export default function AskAIPage() {
                     confidence: aiResponse.confidence
                 }
             ]);
-        } catch (error) {
-            console.error('AI Request failed:', error);
+        } catch (err) {
+            console.error('AI Request failed:', err);
             setMessages((prev) => [
                 ...prev,
                 {
@@ -112,69 +121,105 @@ export default function AskAIPage() {
     }
 
     return (
-        <div className="flex flex-col h-[calc(100vh-72px)] md:h-screen w-full max-w-5xl mx-auto bg-[#0F1115]">
-            <div className="flex h-16 shrink-0 items-center justify-between border-b border-[#2A2D35] px-6">
+        <div className="flex flex-col h-[calc(100vh-72px)] md:h-screen w-full max-w-5xl mx-auto" style={{ background: 'var(--background)' }}>
+            {/* Header */}
+            <div className="flex h-16 shrink-0 items-center justify-between px-6" style={{ borderBottom: '1px solid var(--border)' }}>
                 <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-[#10B981]/20 flex items-center justify-center">
-                        <Sprout className="h-5 w-5 text-[#10B981]" />
+                    <div className="h-9 w-9 rounded-xl flex items-center justify-center" style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)' }}>
+                        <Sprout className="h-5 w-5" style={{ color: 'var(--primary)' }} />
                     </div>
                     <div>
-                        <h2 className="text-lg font-bold text-[#F1F3F5]">Agri Advisory AI</h2>
-                        <p className="text-xs text-[#10B981] font-medium">Online & Ready</p>
+                        <h2 className="text-lg font-bold" style={{ color: 'var(--foreground)' }}>Agri Advisory AI</h2>
+                        <p className="text-xs font-medium" style={{ color: 'var(--primary)' }}>Online & Ready</p>
                     </div>
                 </div>
 
-                <button onClick={resetHistory} className="flex items-center text-xs text-[#A0AAB5] hover:text-[#F1F3F5] gap-1 transition-colors">
-                    <RefreshCw className="h-3 w-3" /> Reset Chat
+                <button
+                    onClick={resetHistory}
+                    className="flex items-center text-xs gap-1.5 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                    style={{ color: 'var(--muted-foreground)', background: 'var(--surface-alt)' }}
+                >
+                    <RefreshCw className="h-3 w-3" /> Reset
                 </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
-                <div className="bg-[#181A20] border border-[#2A2D35] rounded-xl p-4 text-sm text-[#A0AAB5] mb-6 flex items-start gap-3">
-                    <AlertCircle className="h-5 w-5 text-[#F59E0B] shrink-0 mt-0.5" />
+            {/* Messages area */}
+            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+                {/* Disclaimer */}
+                <div className="rounded-xl p-4 text-sm flex items-start gap-3" style={{
+                    background: 'color-mix(in srgb, var(--warning) 8%, transparent)',
+                    border: '1px solid color-mix(in srgb, var(--warning) 20%, transparent)',
+                    color: 'var(--muted-foreground)'
+                }}>
+                    <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" style={{ color: 'var(--warning)' }} />
                     <p>Responses are generated by AI for agronomic decision support. This tool does not control vehicle hardware or boom sprayer outputs. Always verify with an agronomist for severe crop issues.</p>
                 </div>
 
+                {/* Loading state */}
                 {loading ? (
-                    <div className="flex items-center justify-center h-32 text-[#A0AAB5] text-sm">Loading history...</div>
+                    <div className="flex flex-col items-center justify-center h-40 gap-3">
+                        <Loader2 className="h-6 w-6 animate-spin" style={{ color: 'var(--primary)' }} />
+                        <span className="text-sm" style={{ color: 'var(--muted-foreground)' }}>Loading advisory history...</span>
+                    </div>
                 ) : messages.length === 0 ? (
-                    <div className="flex items-center justify-center h-32 text-[#A0AAB5] text-sm italic">Type your first agronomic question below.</div>
+                    /* Empty state */
+                    <div className="flex flex-col items-center justify-center h-40 gap-3 text-center">
+                        <MessageSquare className="h-10 w-10" style={{ color: 'var(--muted-foreground)', opacity: 0.5 }} />
+                        <div>
+                            <p className="text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>No conversations yet</p>
+                            <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)', opacity: 0.7 }}>Ask a question about crops, pests, fertilizers, or spraying operations.</p>
+                        </div>
+                    </div>
                 ) : null}
 
+                {/* Messages */}
                 {messages.map((msg) => (
                     <div
                         key={msg.id}
                         className={`flex flex-col max-w-[85%] ${msg.role === 'user' ? 'ml-auto items-end' : 'mr-auto items-start'}`}
                     >
                         <div
-                            className={`rounded-2xl px-5 py-3 ${msg.role === 'user'
-                                    ? 'bg-[#10B981] text-white rounded-br-none'
-                                    : 'bg-[#181A20] border border-[#2A2D35] text-[#F1F3F5] rounded-bl-none'
-                                }`}
+                            className="rounded-2xl px-5 py-3"
+                            style={msg.role === 'user' ? {
+                                background: 'var(--primary)',
+                                color: 'white',
+                                borderBottomRightRadius: '4px'
+                            } : {
+                                background: 'var(--card)',
+                                border: '1px solid var(--border)',
+                                color: 'var(--foreground)',
+                                borderBottomLeftRadius: '4px'
+                            }}
                         >
                             <div className="whitespace-pre-wrap text-[15px] leading-relaxed" dangerouslySetInnerHTML={{ __html: (msg.content || '').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
                             
-                            {/* Trust UI Preservation */}
                             {msg.role === 'ai' && msg.sources && msg.sources.length > 0 && (
-                                <div className="mt-4 pt-3 border-t border-[#2A2D35]/50 flex flex-wrap gap-2">
-                                    <span className="text-xs text-[#A0AAB5] w-full block mb-1">Sources:</span>
+                                <div className="mt-4 pt-3 flex flex-wrap gap-2" style={{ borderTop: '1px solid var(--border)' }}>
+                                    <span className="text-xs w-full block mb-1 flex items-center gap-1" style={{ color: 'var(--muted-foreground)' }}>
+                                        <BookOpen className="h-3 w-3" /> Sources:
+                                    </span>
                                     {msg.sources.map((src, i) => (
-                                        <div key={i} className="bg-[#22252C] text-[#10B981] text-xs px-2 py-1 rounded inline-flex items-center">
+                                        <div key={i} className="text-xs px-2.5 py-1 rounded-lg inline-flex items-center font-medium" style={{
+                                            background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
+                                            color: 'var(--primary)'
+                                        }}>
                                             {src.title}
                                         </div>
                                     ))}
                                 </div>
                             )}
                         </div>
-                        <div className="flex items-center gap-2 mt-1">
+
+                        {/* Metadata */}
+                        <div className="flex items-center gap-2 mt-1.5 px-1">
                             {msg.role === 'ai' && (
-                                <span className="text-[10px] text-[#6B7280] ml-2 font-medium flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-[#10B981]"></span> Grounded
+                                <span className="text-[10px] font-medium flex items-center gap-1" style={{ color: 'var(--muted-foreground)' }}>
+                                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--success)' }} /> Grounded
                                     {msg.confidence && ` • ${msg.confidence}`}
                                 </span>
                             )}
                             {msg.timestamp && (
-                                <span className="text-[10px] text-[#6B7280]">
+                                <span className="text-[10px]" style={{ color: 'var(--muted-foreground)' }}>
                                     {formatTime(msg.timestamp)}
                                 </span>
                             )}
@@ -182,28 +227,42 @@ export default function AskAIPage() {
                     </div>
                 ))}
                 
+                {/* Typing indicator */}
                 {sending && (
                     <div className="flex flex-col max-w-[85%] mr-auto items-start">
-                        <div className="rounded-2xl px-5 py-3 bg-[#181A20] border border-[#2A2D35] text-[#A0AAB5] rounded-bl-none italic text-sm">
-                            Analyzing agromonic databanks...
+                        <div className="rounded-2xl px-5 py-3 flex items-center gap-2" style={{
+                            background: 'var(--card)',
+                            border: '1px solid var(--border)',
+                            borderBottomLeftRadius: '4px'
+                        }}>
+                            <Loader2 className="h-4 w-4 animate-spin" style={{ color: 'var(--primary)' }} />
+                            <span className="text-sm" style={{ color: 'var(--muted-foreground)' }}>Analyzing agronomic databanks...</span>
                         </div>
                     </div>
                 )}
             </div>
 
-            <div className="shrink-0 border-t border-[#2A2D35] p-4 bg-[#181A20]">
+            {/* Input bar */}
+            <div className="shrink-0 p-4" style={{ borderTop: '1px solid var(--border)', background: 'var(--surface)' }}>
                 <form onSubmit={handleSend} className="relative max-w-4xl mx-auto flex items-center">
                     <input
                         type="text"
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder="Type your farming question here..."
-                        className="w-full rounded-full border border-[#2A2D35] bg-[#0F1115] py-4 pl-6 pr-14 text-[#F1F3F5] placeholder:text-[#6B7280] focus:border-[#10B981] focus:outline-none focus:ring-1 focus:ring-[#10B981] transition-all"
+                        placeholder="Ask about crops, pests, fertilizers, spraying..."
+                        className="w-full rounded-full py-4 pl-6 pr-14 bg-transparent focus:outline-none transition-all"
+                        style={{
+                            border: '1px solid var(--border)',
+                            background: 'var(--background)',
+                            color: 'var(--foreground)',
+                        }}
                     />
                     <button
                         type="submit"
                         disabled={!input.trim() || sending}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-[#10B981] text-white disabled:opacity-50 disabled:bg-[#2A2D35] disabled:text-[#6B7280] transition-colors shadow-lg"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full text-white transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                        style={{ background: 'var(--primary)', boxShadow: 'var(--shadow-md)' }}
+                        aria-label="Send message"
                     >
                         <Send className="h-4 w-4" />
                     </button>

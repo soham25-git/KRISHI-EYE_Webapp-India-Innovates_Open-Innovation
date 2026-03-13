@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { MapPin, Navigation, Play, Pause, Settings2, PlayCircle, MapIcon } from 'lucide-react'
+import { MapIcon } from 'lucide-react'
 import { TractorMarker } from '@/components/map/tractor-marker'
 import { RouteTrail } from '@/components/map/route-trail'
 import { HeatLegend } from '@/components/map/heat-legend'
@@ -47,12 +47,17 @@ export default function MapPage() {
     if (!currentPoint) return null
 
     return (
-        <div className="relative h-[calc(100vh-72px)] md:h-screen w-full bg-[#111318] overflow-hidden">
+        <div className="relative h-[calc(100vh-72px)] md:h-screen w-full overflow-hidden" style={{ background: 'var(--background)' }}>
             <HeatLegend />
 
-            <div className="absolute inset-0 opacity-20 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#10B981] via-[#0F1115] to-[#0F1115]" />
+            <div className="absolute inset-0 opacity-15 pointer-events-none" style={{
+                background: 'radial-gradient(ellipse at center, var(--primary) 0%, transparent 60%)'
+            }} />
 
-            <div className="absolute inset-4 md:inset-12 border border-[#2A2D35]/50 bg-[#181A20]/30 rounded-3xl overflow-hidden backdrop-blur-sm shadow-inner">
+            <div className="absolute inset-4 md:inset-8 rounded-2xl overflow-hidden" style={{
+                background: 'color-mix(in srgb, var(--surface) 30%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--border) 50%, transparent)',
+            }}>
                 <RouteTrail points={mockRouteData} progressIndex={progressIndex} />
                 <TractorMarker
                     lat={currentPoint.lat}
@@ -72,14 +77,23 @@ export default function MapPage() {
                 onSpeedChange={setSpeed}
                 speed={speed}
             />
-            <div className="absolute top-4 left-4 z-10 bg-[#181A20] p-4 rounded-xl border border-[#2A2D35] shadow-lg">
-                <h2 className="text-xl font-bold text-[#F1F3F5]">North Wheat Plot</h2>
-                <p className="text-sm text-[#A0AAB5] flex items-center gap-2 mt-1">
-                    <MapIcon className="h-4 w-4" />
+
+            {/* Info panel — high contrast, no glassmorphism */}
+            <div className="absolute top-4 left-4 z-10 rounded-xl p-4" style={{
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-lg)'
+            }}>
+                <h2 className="text-xl font-bold" style={{ color: 'var(--foreground)' }}>North Wheat Plot</h2>
+                <p className="text-sm flex items-center gap-2 mt-1" style={{ color: 'var(--muted-foreground)' }}>
+                    <MapIcon className="h-4 w-4 shrink-0" />
                     12.5 Acres • Tracking Swaraj 855 boom-equipped with KRISHI-EYE
                 </p>
-                <div className="mt-3 flex items-center gap-2 text-[10px] text-[#A0AAB5] border-t border-[#2A2D35] pt-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#3B82F6]" />
+                <div className="mt-3 flex items-center gap-2 text-[11px] pt-2" style={{
+                    borderTop: '1px solid var(--border)',
+                    color: 'var(--muted-foreground)'
+                }}>
+                    <span className="h-2 w-2 rounded-full" style={{ background: 'var(--info)' }} />
                     Phase 1 Visualization (Simulated Replay)
                 </div>
             </div>

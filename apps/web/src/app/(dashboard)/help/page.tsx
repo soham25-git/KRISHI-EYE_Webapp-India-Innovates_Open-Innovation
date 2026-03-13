@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { apiRequest } from '@/lib/api-client'
-import { PhoneCall, Search, MessageSquarePlus } from 'lucide-react'
+import { PhoneCall, Search, MessageSquarePlus, Loader2, AlertCircle, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 
@@ -16,9 +16,16 @@ interface SupportContact {
     category: string;
 }
 
+const categoryIcons: Record<string, string> = {
+    'On-site': '📍',
+    'Advisory': '🧑‍🌾',
+    'Helplines': '☎️'
+}
+
 export default function HelpDirectoryPage() {
     const [contacts, setContacts] = useState<SupportContact[]>([])
     const [loading, setLoading] = useState(true)
+    const [error, setError] = useState('')
     const [search, setSearch] = useState('')
     const [showTicketModal, setShowTicketModal] = useState(false)
 
@@ -39,8 +46,8 @@ export default function HelpDirectoryPage() {
                 } else {
                     setContacts(fallbackContacts);
                 }
-            } catch (error) {
-                console.error('Failed to fetch support contacts, using fallback:', error);
+            } catch (err) {
+                console.error('Failed to fetch support contacts, using fallback:', err);
                 setContacts(fallbackContacts);
             } finally {
                 setLoading(false);
@@ -60,12 +67,13 @@ export default function HelpDirectoryPage() {
         <div className="flex flex-col gap-6 p-6 pb-24 md:pb-6 max-w-4xl mx-auto w-full">
             <div className="flex flex-row items-center justify-between gap-4 mb-2">
                 <div className="flex flex-col gap-1">
-                    <h2 className="text-2xl font-bold tracking-tight text-[#F1F3F5]">Support Directory</h2>
-                    <p className="text-[#A0AAB5]">Verified India-native agricultural helplines and platform support.</p>
+                    <h2 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--foreground)' }}>Support Directory</h2>
+                    <p style={{ color: 'var(--muted-foreground)' }} className="text-sm">Verified India-native agricultural helplines and platform support.</p>
                 </div>
                 <Button
                     onClick={() => setShowTicketModal(true)}
-                    className="bg-[#10B981] hover:bg-[#0E9D6E] text-[#0F1115]"
+                    className="cursor-pointer font-semibold"
+                    style={{ background: 'var(--primary)', color: 'var(--primary-foreground)' }}
                 >
                     <MessageSquarePlus className="mr-2 h-4 w-4" />
                     New Ticket
@@ -82,20 +90,28 @@ export default function HelpDirectoryPage() {
                 />
             )}
 
-            <div className="relative mb-6">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#6B7280]" />
+            {/* Search */}
+            <div className="relative">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5" style={{ color: 'var(--muted-foreground)' }} />
                 <input
                     type="text"
                     placeholder="Search for local experts, govt helplines (KVK, ICAR)..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full rounded-xl border border-[#2A2D35] bg-[#181A20] py-3 pl-10 pr-4 text-[#F1F3F5] placeholder:text-[#6B7280] focus:border-[#10B981] focus:outline-none focus:ring-1 focus:ring-[#10B981] transition-all"
+                    className="w-full rounded-xl py-3 pl-11 pr-4 bg-transparent focus:outline-none transition-all"
+                    style={{
+                        border: '1px solid var(--border)',
+                        background: 'var(--input)',
+                        color: 'var(--foreground)',
+                    }}
                 />
             </div>
 
+            {/* Loading state */}
             {loading ? (
-                <div className="flex justify-center p-12">
-                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#10B981] border-t-transparent" />
+                <div className="flex flex-col items-center justify-center py-16 gap-3">
+                    <Loader2 className="h-6 w-6 animate-spin" style={{ color: 'var(--primary)' }} />
+                    <span className="text-sm" style={{ color: 'var(--muted-foreground)' }}>Loading support directory...</span>
                 </div>
             ) : (
                 <div className="flex flex-col gap-8">
@@ -105,37 +121,60 @@ export default function HelpDirectoryPage() {
 
                         return (
                             <div key={cat} className="space-y-4">
-                                <h3 className="text-sm font-bold text-[#10B981] uppercase tracking-[0.2em] border-b border-[#2A2D35] pb-2">{cat}</h3>
-                                <div className="grid grid-cols-1 gap-4">
+                                <h3 className="text-sm font-bold uppercase tracking-[0.15em] pb-2 flex items-center gap-2" style={{
+                                    color: 'var(--primary)',
+                                    borderBottom: '1px solid var(--border)'
+                                }}>
+                                    {cat}
+                                </h3>
+                                <div className="grid grid-cols-1 gap-3">
                                     {catContacts.map((contact) => (
-                                        <div key={contact.id} className="flex flex-col md:flex-row md:items-center justify-between gap-4 rounded-xl border border-[#2A2D35] bg-[#181A20] p-5 shadow-sm hover:border-[#10B981]/50 transition-colors group">
+                                        <div key={contact.id} className="flex flex-col md:flex-row md:items-center justify-between gap-4 rounded-xl p-5 transition-all group" style={{
+                                            background: 'var(--card)',
+                                            border: '1px solid var(--border)',
+                                            boxShadow: 'var(--shadow-sm)'
+                                        }}>
                                             <div>
-                                                <h3 className="text-lg font-bold text-[#F1F3F5] mb-1 group-hover:text-[#10B981] transition-colors">{contact.name}</h3>
-                                                <p className="text-sm text-[#A0AAB5]">{contact.role}</p>
+                                                <h3 className="text-base font-bold mb-1 transition-colors" style={{ color: 'var(--foreground)' }}>{contact.name}</h3>
+                                                <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>{contact.role}</p>
                                             </div>
 
                                             <Link
                                                 href={`tel:${contact.phone}`}
-                                                className="flex items-center justify-center gap-2 rounded-lg bg-[#22252C] border border-[#2A2D35] px-6 py-3 font-semibold text-[#F1F3F5] hover:bg-[#10B981] hover:text-[#0F1115] transition-all whitespace-nowrap"
+                                                className="flex items-center justify-center gap-2 rounded-xl px-5 py-3 font-semibold transition-all whitespace-nowrap cursor-pointer text-sm"
+                                                style={{
+                                                    background: 'var(--surface-alt)',
+                                                    border: '1px solid var(--border)',
+                                                    color: 'var(--foreground)',
+                                                }}
                                             >
-                                                <PhoneCall className="h-4 w-4" />
+                                                <PhoneCall className="h-4 w-4" style={{ color: 'var(--primary)' }} />
                                                 {contact.phone}
                                             </Link>
                                         </div>
                                     ))}
                                     {catContacts.length === 0 && !search && (
-                                        <div className="text-sm text-[#6B7280] italic px-4 py-2 bg-[#181A20]/50 rounded-lg border border-dashed border-[#2A2D35]">No contacts listed for this category yet.</div>
+                                        <div className="flex items-center gap-2 text-sm italic px-4 py-3 rounded-xl" style={{
+                                            color: 'var(--muted-foreground)',
+                                            background: 'var(--surface-alt)',
+                                            border: '1px dashed var(--border)'
+                                        }}>
+                                            <Users className="h-4 w-4 shrink-0" />
+                                            No contacts listed for this category yet.
+                                        </div>
                                     )}
                                 </div>
                             </div>
                         )
                     })}
                     {filteredContacts.length === 0 && search && (
-                        <div className="text-center py-12 text-[#A0AAB5]">No support contacts found matching your search.</div>
+                        <div className="flex flex-col items-center py-12 gap-2" style={{ color: 'var(--muted-foreground)' }}>
+                            <Search className="h-8 w-8 opacity-40" />
+                            <span className="text-sm">No support contacts found matching your search.</span>
+                        </div>
                     )}
                 </div>
             )}
         </div>
     )
 }
-
