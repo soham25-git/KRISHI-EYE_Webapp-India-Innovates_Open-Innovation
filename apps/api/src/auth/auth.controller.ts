@@ -51,11 +51,12 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Tokens returned successfully.' })
   @ApiResponse({ status: 401, description: 'Invalid or expired OTP.' })
   async verifyOtp(@Body() dto: VerifyOtpDto, @Ip() ip: string, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const userAgent = req.headers['user-agent'] || 'Unknown';
-    const tokens = await this.authService.verifyOtp(dto.phone, dto.otp, ip, userAgent);
-    
-    // Cookie Security Options
-    const isProd = process.env.NODE_ENV === 'production';
+    try {
+      const userAgent = req.headers['user-agent'] || 'Unknown';
+      const tokens = await this.authService.verifyOtp(dto.phone, dto.otp, ip, userAgent);
+      
+      // Cookie Security Options
+      const isProd = process.env.NODE_ENV === 'production';
     const cookieOptions = {
         httpOnly: true,
         secure: isProd,
@@ -66,7 +67,13 @@ export class AuthController {
     res.cookie('krishi_auth_token', tokens.access_token, { ...cookieOptions, maxAge: 15 * 60 * 1000 }); // 15m
     res.cookie('krishi_refresh_token', tokens.refresh_token, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 }); // 7d
 
-    return tokens;
+      return tokens;
+    } catch (e: any) {
+      if (e instanceof UnauthorizedException) {
+        throw e;
+      }
+      return res.status(500).json({ error: 'Verify OTP failed', details: e.message || String(e) });
+    }
   }
 
   @Post('refresh')
