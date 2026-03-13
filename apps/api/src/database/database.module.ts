@@ -14,19 +14,11 @@ import { SupportTicket } from './entities/support-ticket.entity';
 import { AdvisoryLog } from './entities/advisory-log.entity';
 import { FarmerProfile, SupportOrganization, SupportContact, KnowledgeSource, KnowledgeChunk, AuditLog, ConsentRecord } from './entities/other.entity';
 
-// Parse DATABASE_URL if available, otherwise fall back to individual env vars or SQLite for demo
+// Parse DATABASE_URL if available, otherwise fall back to individual env vars
+// NOTE: SQLite removed — it requires native bindings that fail on Docker Alpine.
+// All environments use PostgreSQL.
 function getTypeOrmConfig() {
     const dbUrl = process.env.DATABASE_URL;
-    const isDemo = process.env.APP_ENV === 'demo';
-    const isTest = process.env.NODE_ENV === 'test';
-
-    if (isTest) {
-        return { type: 'sqlite' as const, database: ':memory:' };
-    }
-
-    if (isDemo) {
-        return { type: 'sqlite' as const, database: 'krishi_demo.sqlite' };
-    }
 
     if (dbUrl) {
         // Render provides DATABASE_URL in standard postgres:// format
@@ -59,6 +51,8 @@ function getTypeOrmConfig() {
             ],
             synchronize: false, // Never auto-sync in production — use Prisma migrations
             logging: false,
+            retryAttempts: 3,
+            retryDelay: 2000,
         }),
     ],
 })
