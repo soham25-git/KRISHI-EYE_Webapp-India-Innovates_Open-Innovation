@@ -28,30 +28,34 @@ async def ask_advisory(
     from app.retrieval.service import RetrievalService
     from app.answer.service import AnswerService
     from app.providers.llm import PlaceholderLLMProvider
+    from app.common.schemas import QueryEntities
 
-    # Dependency injection (In a full app, this would be managed by a DI container)
+    # Dependency injection
     repo = AdvisoryRepository()
     retriever = RetrievalService(PlaceholderEmbeddingProvider(), repo)
     answer_service = AnswerService(PlaceholderLLMProvider())
 
-    # 1. Retrieve evidence
+    # 1. Extract Query Entities
+    entities = answer_service._extract_entities(request)
+
+    # 2. Retrieve grounded evidence
     chunks = await retriever.retrieve(
         query=request.question,
-        crop=request.crop,
-        district=request.district
+        entities=entities
     )
 
-    # 2. Risk classification (Simple rule-based for Phase 1)
+    # 3. Risk classification
     risk_level = "low"
     high_risk_keywords = ["dose", "chemical", "toxic", "emergency", "poison"]
     if any(k in request.question.lower() for k in high_risk_keywords):
         risk_level = "high"
 
-    # 3. Generate grounded advisory
+    # 4. Generate grounded advisory with validation guard
     response = await answer_service.generate_advisory(
         request=request,
         chunks=chunks,
-        risk_level=risk_level
+        risk_level=risk_level,
+        entities=entities
     )
 
     return response

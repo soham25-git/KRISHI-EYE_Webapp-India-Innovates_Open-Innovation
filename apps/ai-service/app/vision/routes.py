@@ -24,7 +24,8 @@ async def analyze_image(file: UploadFile = File(...)):
     # 1. Readiness Check
     health = vision_service.check_health()
     if health["status"] != "ready":
-        status_code = 503 if health["status"] == "unavailable_deps" else 500
+        # 503 for deployment/dependency issues, 500 for other readiness failures
+        status_code = 503 if health["status"] in ["unavailable_deps", "missing_onnxruntime", "unavailable_models"] else 500
         raise HTTPException(
             status_code=status_code,
             detail=health["error"] or "Vision AI service is currently unavailable."

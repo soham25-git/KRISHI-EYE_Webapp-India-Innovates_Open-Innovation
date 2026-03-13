@@ -77,13 +77,15 @@ export function ImageAnalyzer({ onClose }: ImageAnalyzerProps) {
                 const message = errData.detail || errData.message || 'Analysis failed';
 
                 if (status === 413) {
-                    throw { status, message: 'Image is too large for analysis (max 10MB).' };
+                    throw { status, message: 'Image is too large. Please use an image under 10MB.' };
                 } else if (status === 503) {
-                    throw { status, message: 'Vision AI is temporarily unavailable. Our models are warming up or undergoing maintenance.' };
+                    throw { status, message: 'Vision AI is temporarily unavailable. The inference service is currently offline or missing required dependencies.' };
                 } else if (status === 400) {
                     throw { status, message: `Invalid request: ${message}` };
+                } else if (status === 500) {
+                     throw { status, message: 'Image analysis failed due to a server error. Please try again with a different photo.' };
                 } else {
-                    throw { status, message: `Server error (${status}): ${message}` };
+                    throw { status, message: `System error (${status}): ${message}` };
                 }
             }
 
@@ -107,9 +109,10 @@ export function ImageAnalyzer({ onClose }: ImageAnalyzerProps) {
             }
 
             setResult(data)
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Vision analysis error:', err);
-            setError(err.message || 'Failed to analyze image. Please check your connection and try again.');
+            const message = err instanceof Error ? err.message : 'Failed to analyze image. Please check your connection and try again.';
+            setError(message);
         } finally {
             setAnalyzing(false)
         }
@@ -187,7 +190,10 @@ export function ImageAnalyzer({ onClose }: ImageAnalyzerProps) {
                 {file && !result && (
                     <div className="space-y-4">
                         <div className="relative rounded-xl overflow-hidden" style={{ background: 'var(--background)' }}>
-                            {preview && <img src={preview} alt="Plant preview" className="w-full max-h-80 object-contain" />}
+                            {preview && (
+                                /* eslint-disable-next-line @next/next/no-img-element */
+                                <img src={preview} alt="Plant preview" className="w-full max-h-80 object-contain" />
+                            )}
                             <button onClick={reset} className="absolute top-2 right-2 p-1.5 rounded-lg cursor-pointer" style={{ background: 'var(--card)', boxShadow: 'var(--shadow-md)' }} aria-label="Remove image">
                                 <X className="h-4 w-4" style={{ color: 'var(--muted-foreground)' }} />
                             </button>
@@ -242,6 +248,7 @@ export function ImageAnalyzer({ onClose }: ImageAnalyzerProps) {
                         {/* Annotated image */}
                         {result.annotated_image && (
                             <div className="rounded-xl overflow-hidden" style={{ background: 'var(--background)', border: '1px solid var(--border)' }}>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img src={`data:image/jpeg;base64,${result.annotated_image}`} alt="Annotated analysis result" className="w-full" />
                             </div>
                         )}

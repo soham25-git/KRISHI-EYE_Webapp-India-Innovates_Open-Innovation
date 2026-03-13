@@ -98,13 +98,16 @@ class VisionAnalysisService:
         self._initialized = False
         self._init_error: Optional[str] = None
         self._missing_deps = False
+        self._missing_onnxruntime = False
 
     def check_health(self) -> Dict[str, Any]:
         """Verify that vision dependencies are installed and models are available."""
         self._lazy_init()
         
         status = "ready"
-        if self._missing_deps:
+        if self._missing_onnxruntime:
+            status = "missing_onnxruntime"
+        elif self._missing_deps:
             status = "unavailable_deps"
         elif self._init_error:
             status = "unavailable_models"
@@ -112,6 +115,7 @@ class VisionAnalysisService:
         return {
             "status": status,
             "error": self._init_error,
+            "missing_onnxruntime": self._missing_onnxruntime,
             "models": {
                 "detector": self.detector_session is not None,
                 "classifier": self.classifier_session is not None,
@@ -130,6 +134,8 @@ class VisionAnalysisService:
             from PIL import Image
             import cv2
         except ImportError as e:
+            if "onnxruntime" in str(e):
+                self._missing_onnxruntime = True
             self._missing_deps = True
             self._init_error = f"Missing vision dependency: {str(e)}. Please install 'vision' extra."
             logger.error(self._init_error)

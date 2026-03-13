@@ -1,7 +1,7 @@
 from enum import Enum
 from pydantic import BaseModel, ConfigDict
 from copy import deepcopy
-from typing import Optional
+from typing import Optional, List, Any
 from datetime import datetime
 from uuid import UUID
 
@@ -36,3 +36,11 @@ class ConfidenceScore(BaseModel):
     score: float
     factors: list[str] = []
     is_sufficient: bool = True
+
+class QueryEntities(BaseModel):
+    crop: Optional[str] = None
+    geography: Optional[str] = None
+    intent: str = "info"  # "info" or "treatment"
+    pest_or_disease_context: Optional[str] = None
+    treatment_intent: bool = False
+    is_location_specific: bool = False
