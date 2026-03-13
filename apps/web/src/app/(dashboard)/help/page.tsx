@@ -23,23 +23,25 @@ export default function HelpDirectoryPage() {
     const [showTicketModal, setShowTicketModal] = useState(false)
 
     useEffect(() => {
+        const fallbackContacts: SupportContact[] = [
+            { id: '1', name: 'Kisan Call Centre (KCC)', role: 'National Extension Service (Advisory)', phone: '1800-180-1551', category: 'Advisory' },
+            { id: '2', name: 'KVK Jaipur 1 (Chomu)', role: 'District Agricultural Expert (On-site)', phone: '01423-235133', category: 'On-site' },
+            { id: '3', name: 'PRADAN Hazaribag', role: 'Rural Livelihood Team (On-site)', phone: '+91 99317 15240', category: 'On-site' },
+            { id: '4', name: 'ATTPL Emergency Helpline', role: '24/7 Agri Emergency Support', phone: '1800-890-0815', category: 'Helplines' },
+            { id: '5', name: 'ICAR-IARI Extension', role: 'Expert Crop Advisory (Delhi)', phone: '011-25842387', category: 'Advisory' }
+        ];
+
         const fetchContacts = async () => {
             try {
                 const data = await apiRequest<SupportContact[]>('/v1/support/contacts');
                 if (data && data.length > 0) {
                     setContacts(data);
                 } else {
-                    // Fallback for Phase 1 Demo / Seeded Data (India-native verified contacts)
-                    setContacts([
-                        { id: '1', name: 'Kisan Call Centre (KCC)', role: 'National Extension Service (Advisory)', phone: '1800-180-1551', category: 'Advisory' },
-                        { id: '2', name: 'KVK Jaipur 1 (Chomu)', role: 'District Agricultural Expert (On-site)', phone: '01423-235133', category: 'On-site' },
-                        { id: '3', name: 'PRADAN Hazaribag', role: 'Rural Livelihood Team (On-site)', phone: '+91 99317 15240', category: 'On-site' },
-                        { id: '4', name: 'ATTPL Emergency Helpline', role: '24/7 Agri Emergency Support', phone: '1800-890-0815', category: 'Helplines' },
-                        { id: '5', name: 'ICAR-IARI Extension', role: 'Expert Crop Advisory (Delhi)', phone: '011-25842387', category: 'Advisory' }
-                    ]);
+                    setContacts(fallbackContacts);
                 }
             } catch (error) {
-                console.error('Failed to fetch support contacts', error);
+                console.error('Failed to fetch support contacts, using fallback:', error);
+                setContacts(fallbackContacts);
             } finally {
                 setLoading(false);
             }
