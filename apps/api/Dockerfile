@@ -20,15 +20,15 @@ RUN pnpm install --no-frozen-lockfile --ignore-scripts
 # Copy backend source
 COPY apps/api/ ./apps/api/
 
-# Generate Prisma client & build NestJS
+# Generate Prisma client & build with tsc (nest build silently fails with nodenext)
 WORKDIR /app/apps/api
 RUN npx prisma generate
-RUN pnpm run build
+RUN npx tsc -p tsconfig.build.json
 
 # Verify dist exists (fail fast if build broken)
-RUN ls -la dist/main.js
+RUN ls -la dist/src/main.js
 
 ENV NODE_ENV=production
 
 # Run migrations then start (0.0.0.0 binding handled in main.ts)
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main.js"]
