@@ -1,18 +1,13 @@
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { DataSource } from 'typeorm';
+import { PrismaService } from '../../database/prisma.service';
 import { OWNERSHIP_KEY, OwnershipMetadata } from '../decorators/ownership.decorator';
-import { FarmMember } from '../../database/entities/farm-member.entity';
-import { Field } from '../../database/entities/field.entity';
-import { Tractor } from '../../database/entities/tractor.entity';
-import { OperationJob } from '../../database/entities/operation-job.entity';
-import { SupportTicket } from '../../database/entities/support-ticket.entity';
 
 @Injectable()
 export class OwnershipGuard implements CanActivate {
     constructor(
         private reflector: Reflector,
-        private dataSource: DataSource,
+        private prisma: PrismaService,
     ) { }
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -34,11 +29,10 @@ export class OwnershipGuard implements CanActivate {
             return true; // No ID to check ownership for
         }
 
-        // Handle different relations
+        // Handle different relations using Prisma
         if (metadata.relation === 'farm_member' || metadata.relation === 'farm_owner') {
-            const memberRepo = this.dataSource.getRepository(FarmMember);
-            const member = await memberRepo.findOne({
-                where: { farm_id: resourceId, user_id: userId }
+            const member = await this.prisma.farmMember.findFirst({
+                where: { farmId: resourceId, userId: userId }
             });
 
             if (!member) {
@@ -49,8 +43,7 @@ export class OwnershipGuard implements CanActivate {
                 throw new ForbiddenException('Farm owner role required');
             }
         } else if (metadata.relation === 'field_owner' || metadata.relation === 'field_member') {
-            const fieldRepo = this.dataSource.getRepository(Field);
-            const field = await fieldRepo.findOne({
+            const field = await this.prisma.field.findUnique({
                 where: { id: resourceId }
             });
 
@@ -58,9 +51,8 @@ export class OwnershipGuard implements CanActivate {
                 throw new NotFoundException('Field not found');
             }
 
-            const memberRepo = this.dataSource.getRepository(FarmMember);
-            const member = await memberRepo.findOne({
-                where: { farm_id: field.farm_id, user_id: userId }
+            const member = await this.prisma.farmMember.findFirst({
+                where: { farmId: field.farmId, userId: userId }
             });
 
             if (!member) {
@@ -71,8 +63,7 @@ export class OwnershipGuard implements CanActivate {
                 throw new ForbiddenException('Farm owner role required to manage fields');
             }
         } else if (metadata.relation === 'tractor_owner' || metadata.relation === 'tractor_member') {
-            const tractorRepo = this.dataSource.getRepository(Tractor);
-            const tractor = await tractorRepo.findOne({
+            const tractor = await this.prisma.tractor.findUnique({
                 where: { id: resourceId }
             });
 
@@ -80,9 +71,8 @@ export class OwnershipGuard implements CanActivate {
                 throw new NotFoundException('Tractor not found');
             }
 
-            const memberRepo = this.dataSource.getRepository(FarmMember);
-            const member = await memberRepo.findOne({
-                where: { farm_id: tractor.farm_id, user_id: userId }
+            const member = await this.prisma.farmMember.findFirst({
+                where: { farmId: tractor.farmId, userId: userId }
             });
 
             if (!member) {
@@ -93,19 +83,17 @@ export class OwnershipGuard implements CanActivate {
                 throw new ForbiddenException('Farm owner role required to manage tractors');
             }
         } else if (metadata.relation === 'job_owner' || metadata.relation === 'job_member') {
-            const jobRepo = this.dataSource.getRepository(OperationJob);
-            const job = await jobRepo.findOne({
+            const job = await this.prisma.operationJob.findUnique({
                 where: { id: resourceId },
-                relations: ['tractor']
+                include: { tractor: true }
             });
 
             if (!job) {
                 throw new NotFoundException('Job not found');
             }
 
-            const memberRepo = this.dataSource.getRepository(FarmMember);
-            const member = await memberRepo.findOne({
-                where: { farm_id: job.tractor.farm_id, user_id: userId }
+            const member = await this.prisma.farmMember.findFirst({
+                where: { farmId: job.tractor.farmId, userId: userId }
             });
 
             if (!member) {
@@ -116,8 +104,7 @@ export class OwnershipGuard implements CanActivate {
                 throw new ForbiddenException('Farm owner role required to manage jobs');
             }
         } else if (metadata.relation === 'ticket_creator' || metadata.relation === 'ticket_member') {
-            const ticketRepo = this.dataSource.getRepository(require('../../database/entities/support-ticket.entity').SupportTicket);
-            const ticket = await ticketRepo.findOne({
+            const ticket = await this.prisma.supportTicket.findUnique({
                 where: { id: resourceId }
             });
 
@@ -126,15 +113,14 @@ export class OwnershipGuard implements CanActivate {
             }
 
             // Ticket Creator check (Always allowed for creator)
-            if (ticket.user_id === userId) {
+            if (ticket.userId === userId) {
                 return true;
             }
 
             // Ticket Member check (Allowed if ticket is farm-scoped and user is member)
-            if (metadata.relation === 'ticket_member' && ticket.farm_id) {
-                const memberRepo = this.dataSource.getRepository(FarmMember);
-                const member = await memberRepo.findOne({
-                    where: { farm_id: ticket.farm_id, user_id: userId }
+            if (metadata.relation === 'ticket_member' && ticket.farmId) {
+                const member = await this.prisma.farmMember.findFirst({
+                    where: { farmId: ticket.farmId, userId: userId }
                 });
 
                 if (member) {
