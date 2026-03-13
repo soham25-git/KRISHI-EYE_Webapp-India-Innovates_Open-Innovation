@@ -1,3 +1,4 @@
+import re
 from typing import List, Optional
 from uuid import uuid4
 from app.api.schemas import AdvisoryRequest, AdvisoryResponse, ActionCard
@@ -7,36 +8,63 @@ from app.retrieval.service import RetrievedChunk
 from app.config import settings
 from app.common.logging import log_advisory_decision
 
+# Common Indian crops for auto-extraction from question text
+KNOWN_CROPS = [
+    "wheat", "rice", "paddy", "cotton", "sugarcane", "maize", "corn",
+    "potato", "tomato", "onion", "soybean", "mustard", "groundnut",
+    "chilli", "pepper", "brinjal", "eggplant", "okra", "bhindi",
+    "mango", "banana", "grape", "pomegranate", "citrus", "lemon",
+    "tea", "coffee", "jute", "turmeric", "ginger", "garlic",
+    "chickpea", "chana", "lentil", "dal", "pigeon pea", "arhar",
+    "bajra", "jowar", "ragi", "millet", "barley", "sunflower",
+    "cauliflower", "cabbage", "spinach", "palak", "pea", "beans",
+]
+
 class AnswerService:
     def __init__(self, llm_provider: BaseLLMProvider):
         self.llm = llm_provider
 
+    @staticmethod
+    def _extract_crop_from_question(question: str) -> Optional[str]:
+        """Try to extract a crop name from the question text."""
+        q_lower = question.lower()
+        for crop in KNOWN_CROPS:
+            # Match whole-word only to avoid false positives
+            if re.search(rf'\b{re.escape(crop)}\b', q_lower):
+                return crop.capitalize()
+        return None
+
     def _generate_followup_if_missing_context(self, request: AdvisoryRequest) -> Optional[AdvisoryResponse]:
         """
-        If the user asks a localized question (e.g. 'what pesticide to use?') but 
-        has no crop or district on their profile or request, we should ask them.
-        This is a simple scaffold implementation.
+        Ask for crop only if it's genuinely missing from both the request metadata
+        AND the question text itself.
         """
-        # Very naive check: if they mention "pesticide" or "disease" but we don't know the crop
         question_lower = request.question.lower()
         needs_context = any(w in question_lower for w in ["pesticide", "disease", "spray", "fertilizer"])
         
-        if needs_context and not request.crop:
-            return AdvisoryResponse(
-                answer_id=uuid4(),
-                answer="To give you the best advice, could you tell me which crop you are asking about?",
-                detailed_explanation=None,
-                confidence=1.0, # Complete confidence in asking a follow up
-                risk_level="low",
-                sources=[],
-                action_cards=[ActionCard(type="ask_followup", label="Reply with Crop", payload={"required": "crop"})],
-                abstained=False,
-                language=request.language,
-                warnings=[],
-                escalated=False,
-                prompt_version=settings.prompt_version,
-                knowledge_version=settings.knowledge_version
-            )
+        if not needs_context:
+            return None
+
+        # Check if crop is already provided or can be extracted from question  
+        crop = request.crop or self._extract_crop_from_question(request.question)
+        if crop:
+            return None  # Crop is known, no need to ask
+        
+        return AdvisoryResponse(
+            answer_id=uuid4(),
+            answer="To give you the most accurate advice, could you tell me which crop you are asking about? For example: wheat, rice, potato, tomato, etc.",
+            detailed_explanation=None,
+            confidence=1.0,
+            risk_level="low",
+            sources=[],
+            action_cards=[ActionCard(type="ask_followup", label="Reply with Crop", payload={"required": "crop"})],
+            abstained=False,
+            language=request.language,
+            warnings=[],
+            escalated=False,
+            prompt_version=settings.prompt_version,
+            knowledge_version=settings.knowledge_version
+        )
         return None
 
     def _compute_confidence(self, chunks: List[RetrievedChunk], llm_raw_score: float = 0.8) -> float:
@@ -85,12 +113,30 @@ class AnswerService:
         )
         user_prompt = f"Context:\n{context_text}\n\nQuestion: {request.question}"
 
-        # 4. Call LLM (In demo/Phase 1 we simulate the LLM result based on context for reliability)
+        # 4. Call LLM (In demo/Phase 1 we simulate structured answer from context)
         if settings.environment == "development" or settings.llm_provider == "placeholder":
             source_content = chunks[0].text
-            answer_text = f"Based on {chunks[0].title} [1], for your query about \"{request.question}\", the guidelines state: {source_content} "
+            detected_crop = request.crop or self._extract_crop_from_question(request.question) or "your crop"
+            
+            answer_text = (
+                f"**Situation**\n"
+                f"You asked about \"{request.question}\" regarding {detected_crop}. "
+                f"Based on {chunks[0].title} [1], here is the relevant guidance.\n\n"
+                f"**Recommendation**\n"
+                f"{source_content}\n\n"
+            )
             if len(chunks) > 1:
-                answer_text += f"\n\nAdditionally, {chunks[1].title} [2] provides further context on related agronomic practices."
+                answer_text += (
+                    f"**Action**\n"
+                    f"Additionally, {chunks[1].title} [2] provides the following actionable steps "
+                    f"for managing this in your field.\n\n"
+                )
+            answer_text += (
+                f"**Safety Note**\n"
+                f"Always verify chemical recommendations with your local KVK before application. "
+                f"Wear proper protective equipment when spraying. If the condition persists or worsens, "
+                f"consult a certified agronomist."
+            )
         else:
             llm_resp = await self.llm.generate(user_prompt, system_prompt=system_prompt)
             answer_text = llm_resp.text

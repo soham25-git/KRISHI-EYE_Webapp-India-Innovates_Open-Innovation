@@ -2,6 +2,8 @@ import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { SupportService } from '../support/support.service';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const FormData = require('form-data');
 
 @Injectable()
 export class AiProxyService {
@@ -82,5 +84,45 @@ export class AiProxyService {
   
   async getSource(sourceId: string): Promise<any> { 
     return { id: sourceId, title: 'Demo Document' }; 
+  }
+
+  async analyzeImage(file: any, userId: string): Promise<any> {
+    try {
+      const formData = new FormData();
+      formData.append('file', file.buffer, {
+        filename: file.originalname,
+        contentType: file.mimetype,
+      });
+
+      const response = await firstValueFrom(
+        this.httpService.post(
+          `${this.aiServiceUrl}/vision/analyze`,
+          formData,
+          {
+            headers: {
+              ...formData.getHeaders(),
+              'X-User-Id': userId,
+            },
+            maxContentLength: 20 * 1024 * 1024,
+            maxBodyLength: 20 * 1024 * 1024,
+          }
+        )
+      );
+
+      return response.data;
+    } catch (error: any) {
+      console.error('Vision analysis proxy error:', error.message);
+      return {
+        status: 'error',
+        confidence: 0,
+        message: 'Image analysis service is currently unavailable. Please try again later.',
+        advisory: {
+          situation: 'The analysis service could not process your image at this time.',
+          recommendation: 'Please try again in a few minutes, or consult your local KVK.',
+          action: 'If the condition appears urgent, contact the Kisan Call Centre at 1800-180-1551.',
+          safety_note: 'Do not apply pesticides without confirmed diagnosis.',
+        }
+      };
+    }
   }
 }

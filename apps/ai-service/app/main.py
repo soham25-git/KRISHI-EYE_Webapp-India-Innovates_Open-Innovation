@@ -36,6 +36,9 @@ app.add_middleware(
 from app.api.routes import router as api_router
 app.include_router(api_router)
 
+from app.vision.routes import router as vision_router
+app.include_router(vision_router)
+
 @app.get("/health", tags=["System"])
 async def health_check():
     """Health check endpoint mapping to orchestrator and CI requirements."""

@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, Req, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { AiProxyService } from './ai-proxy.service';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -71,5 +72,25 @@ export class AiProxyController {
   async getSource(@Param('sourceId') sourceId: string) {
     // Sources are generic, no ownership restriction
     return this.aiProxyService.getSource(sourceId);
+  }
+
+  @Post('analyze-image')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @UseInterceptors(FileInterceptor('file', {
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+    fileFilter: (_req, file, cb) => {
+      const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+      if (!allowed.includes(file.mimetype)) {
+        return cb(new BadRequestException('Only JPEG, PNG, or WebP images are accepted.'), false);
+      }
+      cb(null, true);
+    },
+  }))
+  @ApiOperation({ summary: 'Upload plant image for disease analysis' })
+  async analyzeImage(@UploadedFile() file: any, @Req() req: any) {
+    if (!file) {
+      throw new BadRequestException('No image file provided.');
+    }
+    return this.aiProxyService.analyzeImage(file, req.user.sub || req.user.id);
   }
 }

@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Send, Sprout, AlertCircle, RefreshCw, Loader2, MessageSquare, BookOpen } from 'lucide-react'
+import { Send, Sprout, AlertCircle, RefreshCw, Loader2, MessageSquare, BookOpen, Camera } from 'lucide-react'
 import { apiRequest } from '@/lib/api-client'
+import { ImageAnalyzer } from '@/components/ai/image-analyzer'
 
 const formatTime = (dateString: string) => {
     return new Date(dateString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
@@ -23,6 +24,7 @@ export default function AskAIPage() {
     const [loading, setLoading] = useState(true)
     const [sending, setSending] = useState(false)
     const [error, setError] = useState('')
+    const [showScanner, setShowScanner] = useState(false)
     const scrollRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
@@ -134,17 +136,34 @@ export default function AskAIPage() {
                     </div>
                 </div>
 
-                <button
-                    onClick={resetHistory}
-                    className="flex items-center text-xs gap-1.5 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-                    style={{ color: 'var(--muted-foreground)', background: 'var(--surface-alt)' }}
-                >
-                    <RefreshCw className="h-3 w-3" /> Reset
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setShowScanner(!showScanner)}
+                        className="flex items-center text-xs gap-1.5 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                        style={{
+                            color: showScanner ? 'var(--primary-foreground)' : 'var(--muted-foreground)',
+                            background: showScanner ? 'var(--primary)' : 'var(--surface-alt)'
+                        }}
+                    >
+                        <Camera className="h-3 w-3" /> Scan Leaf
+                    </button>
+                    <button
+                        onClick={resetHistory}
+                        className="flex items-center text-xs gap-1.5 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                        style={{ color: 'var(--muted-foreground)', background: 'var(--surface-alt)' }}
+                    >
+                        <RefreshCw className="h-3 w-3" /> Reset
+                    </button>
+                </div>
             </div>
 
             {/* Messages area */}
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+                {/* Image Scanner */}
+                {showScanner && (
+                    <ImageAnalyzer onClose={() => setShowScanner(false)} />
+                )}
+
                 {/* Disclaimer */}
                 <div className="rounded-xl p-4 text-sm flex items-start gap-3" style={{
                     background: 'color-mix(in srgb, var(--warning) 8%, transparent)',
