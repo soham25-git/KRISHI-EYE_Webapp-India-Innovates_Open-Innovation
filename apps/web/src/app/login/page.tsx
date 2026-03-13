@@ -50,8 +50,8 @@ export default function LoginPage() {
         try {
             const normalized = normalizePhone(phone)
             await login(normalized, otp)
-        } catch (error) {
-            setError('Invalid code. Please try again.')
+        } catch (error: any) {
+            setError(error?.message || 'Login failed due to a server issue. Please try again.')
         } finally {
             setLoading(false)
         }

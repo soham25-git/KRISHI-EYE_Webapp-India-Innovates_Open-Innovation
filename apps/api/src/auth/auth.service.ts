@@ -80,6 +80,7 @@ export class AuthService {
       user = this.userRepository.create({
         phone,
         role: 'farmer',
+        updated_at: new Date(),
       });
       user = await this.userRepository.save(user);
     }
