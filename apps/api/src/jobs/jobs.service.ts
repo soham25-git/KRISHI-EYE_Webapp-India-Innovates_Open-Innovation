@@ -1,98 +1,86 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
-import { OperationJob } from '../database/entities/operation-job.entity';
-import { Tractor } from '../database/entities/tractor.entity';
-import { Field } from '../database/entities/field.entity';
-import { FarmMember } from '../database/entities/farm-member.entity';
+import { PrismaService } from '../database/prisma.service';
 import { CreateJobDto, UpdateJobDto, JobStatus } from './dto/job.dto';
 
 @Injectable()
 export class JobsService {
   constructor(
-    @InjectRepository(OperationJob)
-    private jobRepository: Repository<OperationJob>,
-    @InjectRepository(Tractor)
-    private tractorRepository: Repository<Tractor>,
-    @InjectRepository(Field)
-    private fieldRepository: Repository<Field>,
-    @InjectRepository(FarmMember)
-    private memberRepository: Repository<FarmMember>,
+    private readonly prisma: PrismaService,
   ) { }
 
-  async create(dto: CreateJobDto, userId: string): Promise<OperationJob> {
-    // 1. Fetch tractor and field to verify they exist and belong to the same farm
-    const tractor = await this.tractorRepository.findOne({ where: { id: dto.tractor_id } });
+  async create(dto: CreateJobDto, userId: string): Promise<any> {
+    const tractor = await this.prisma.tractor.findUnique({ where: { id: dto.tractor_id } });
     if (!tractor) throw new NotFoundException('Tractor not found');
 
-    const field = await this.fieldRepository.findOne({ where: { id: dto.field_id } });
+    const field = await this.prisma.field.findUnique({ where: { id: dto.field_id } });
     if (!field) throw new NotFoundException('Field not found');
 
-    if (tractor.farm_id !== field.farm_id) {
+    if (tractor.farmId !== field.farmId) {
       throw new BadRequestException('Tractor and Field must belong to the same farm');
     }
 
-    // 2. Verify user permission on that farm
-    const member = await this.memberRepository.findOne({
-      where: { farm_id: tractor.farm_id, user_id: userId }
+    const member = await this.prisma.farmMember.findFirst({
+      where: { farmId: tractor.farmId, userId: userId }
     });
     if (!member) throw new ForbiddenException('Not a member of the farm owning these resources');
 
-    // 3. Create job
-    const job = this.jobRepository.create({
-      ...dto,
-      started_at: dto.status === JobStatus.RUNNING ? new Date() : undefined,
-    } as any);
-    return this.jobRepository.save(job as unknown as OperationJob);
+    return this.prisma.operationJob.create({
+      data: {
+        tractorId: dto.tractor_id,
+        fieldId: dto.field_id,
+        status: dto.status || JobStatus.PENDING,
+        startedAt: dto.status === JobStatus.RUNNING ? new Date() : undefined,
+      }
+    });
   }
 
-  async findAll(userId: string): Promise<OperationJob[]> {
-    const memberships = await this.memberRepository.find({ where: { user_id: userId } });
-    const farmIds = memberships.map(m => m.farm_id);
+  async findAll(userId: string): Promise<any[]> {
+    const memberships = await this.prisma.farmMember.findMany({ where: { userId: userId } });
+    const farmIds = memberships.map(m => m.farmId);
     if (farmIds.length === 0) return [];
 
-    // This is slightly complex in TypeORM without query builder for deep filtering, 
-    // but we can filter by tractors belonging to these farms.
-    const tractors = await this.tractorRepository.find({
-      where: { farm_id: In(farmIds) },
-      select: ['id']
+    const tractors = await this.prisma.tractor.findMany({
+      where: { farmId: { in: farmIds } },
+      select: { id: true }
     });
     const tractorIds = tractors.map(t => t.id);
     if (tractorIds.length === 0) return [];
 
-    return this.jobRepository.find({
-      where: { tractor_id: In(tractorIds) },
-      relations: ['tractor', 'field'],
+    return this.prisma.operationJob.findMany({
+      where: { tractorId: { in: tractorIds } },
+      include: { tractor: true, field: true },
     });
   }
 
-  async findOne(id: string): Promise<OperationJob> {
-    const job = await this.jobRepository.findOne({
+  async findOne(id: string): Promise<any> {
+    const job = await this.prisma.operationJob.findUnique({
       where: { id },
-      relations: ['tractor', 'field', 'tractor.farm'],
+      include: { 
+        tractor: { include: { farm: true } },
+        field: true 
+      },
     });
     if (!job) throw new NotFoundException(`Job with ID ${id} not found`);
     return job;
   }
 
-  async update(id: string, dto: UpdateJobDto): Promise<OperationJob> {
+  async update(id: string, dto: UpdateJobDto): Promise<any> {
     const job = await this.findOne(id);
 
-    // Handle status transitions
     if (dto.status && dto.status !== job.status) {
       if (job.status === JobStatus.COMPLETED || job.status === JobStatus.CANCELLED) {
         throw new BadRequestException(`Cannot change status of a ${job.status} job`);
       }
-
-      if (dto.status === JobStatus.RUNNING && !job.started_at) {
-        job.started_at = new Date();
-      } else if (dto.status === JobStatus.COMPLETED || dto.status === JobStatus.CANCELLED) {
-        job.ended_at = new Date();
-      }
     }
 
-    Object.assign(job, dto);
-    return this.jobRepository.save(job);
+    return this.prisma.operationJob.update({
+      where: { id },
+      data: {
+        status: dto.status || undefined,
+        startedAt: (dto.status === JobStatus.RUNNING && !job.startedAt) ? new Date() : undefined,
+        endedAt: (dto.status === JobStatus.COMPLETED || dto.status === JobStatus.CANCELLED) ? new Date() : undefined,
+      }
+    });
   }
 
   async getReplayData(id: string) {

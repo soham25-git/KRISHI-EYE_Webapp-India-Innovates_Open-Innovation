@@ -21,7 +21,16 @@ async def analyze_image(file: UploadFile = File(...)):
     Accepts JPEG, PNG, or WebP images up to 10MB.
     Returns classification, segmentation overlay, and advisory.
     """
-    # Validate MIME type
+    # 1. Readiness Check
+    health = vision_service.check_health()
+    if health["status"] != "ready":
+        status_code = 503 if health["status"] == "unavailable_deps" else 500
+        raise HTTPException(
+            status_code=status_code,
+            detail=health["error"] or "Vision AI service is currently unavailable."
+        )
+
+    # 2. Validate MIME type
     content_type = file.content_type or ""
     if content_type not in ALLOWED_TYPES:
         raise HTTPException(
@@ -29,11 +38,11 @@ async def analyze_image(file: UploadFile = File(...)):
             detail=f"Invalid file type: {content_type}. Accepted: JPEG, PNG, WebP."
         )
 
-    # Read and validate size
+    # 3. Read and validate size
     image_bytes = await file.read()
     if len(image_bytes) > MAX_FILE_SIZE:
         raise HTTPException(
-            status_code=400,
+            status_code=413, # Payload Too Large
             detail=f"File too large ({len(image_bytes) // 1024 // 1024}MB). Maximum: 10MB."
         )
 
@@ -47,7 +56,14 @@ async def analyze_image(file: UploadFile = File(...)):
 
     try:
         result = await vision_service.analyze(image_bytes, filename=file.filename or "")
+        
+        # Ensure we don't return 200 for internal error status
+        if result.get("status") == "error":
+             raise HTTPException(status_code=500, detail=result.get("message", "Inference failure"))
+             
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Vision analysis failed: {e}", exc_info=True)
         raise HTTPException(

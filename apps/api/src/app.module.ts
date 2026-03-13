@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { DatabaseModule } from './database/database.module';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { AuthModule } from './auth/auth.module';
@@ -18,6 +17,7 @@ import { AiProxyModule } from './ai-proxy/ai-proxy.module';
 import { DemoModule } from './demo/demo.module';
 import { HealthModule } from './health/health.module';
 import { AuditModule } from './audit/audit.module';
+import { PrismaModule } from './database/prisma.module';
 import { RolesGuard } from './common/guards/roles.guard';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
@@ -28,7 +28,7 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
             ttl: 60000,
             limit: 100, // 100 requests per minute
         }]),
-        DatabaseModule,
+        PrismaModule,
         AuthModule,
         UsersModule,
         FarmsModule,

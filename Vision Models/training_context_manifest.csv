@@ -1,0 +1,4 @@
+model,training_script,input_size,checkpoint,onnx_name,primary_role
+YOLOv8n-seg,train.py,640x640,best.pt,exported from best.pt,leaf detection and segmentation
+MobileNetV2 classifier,train-2.py,224x224,best_potato_classifier.pth,potato_classifier.onnx,leaf disease classification
+UNet lesion segmentation,train-3.py,256x256,best_binary_segmentation.pth,lesion_segmentation.onnx,binary lesion segmentation

@@ -72,8 +72,19 @@ export function ImageAnalyzer({ onClose }: ImageAnalyzerProps) {
             })
 
             if (!resp.ok) {
-                const errData = await resp.json().catch(() => ({}))
-                throw new Error(errData.message || 'Analysis failed')
+                const status = resp.status;
+                const errData = await resp.json().catch(() => ({}));
+                const message = errData.detail || errData.message || 'Analysis failed';
+
+                if (status === 413) {
+                    throw { status, message: 'Image is too large for analysis (max 10MB).' };
+                } else if (status === 503) {
+                    throw { status, message: 'Vision AI is temporarily unavailable. Our models are warming up or undergoing maintenance.' };
+                } else if (status === 400) {
+                    throw { status, message: `Invalid request: ${message}` };
+                } else {
+                    throw { status, message: `Server error (${status}): ${message}` };
+                }
             }
 
             const rawData = await resp.json()
@@ -81,13 +92,12 @@ export function ImageAnalyzer({ onClose }: ImageAnalyzerProps) {
             // Map the simplified backend payload into the frontend interface
             const data: VisionResult = {
                 status: rawData.status || 'error',
-                confidence: rawData.confidence ? rawData.confidence / 100 : 0, // Backend returns 0-100, UI wants 0-1
+                confidence: rawData.confidence ? rawData.confidence / 100 : 0, 
                 annotated_image: rawData.annotated_image ? rawData.annotated_image.replace('data:image/jpeg;base64,', '') : undefined,
                 advisory: rawData.advisory,
                 detections: []
             }
 
-            // Create a detection entry from the primary class
             if (rawData.class) {
                 data.detections!.push({
                     class: rawData.class,
@@ -98,7 +108,8 @@ export function ImageAnalyzer({ onClose }: ImageAnalyzerProps) {
 
             setResult(data)
         } catch (err: any) {
-            setError(err.message || 'Failed to analyze image. Please try again.')
+            console.error('Vision analysis error:', err);
+            setError(err.message || 'Failed to analyze image. Please check your connection and try again.');
         } finally {
             setAnalyzing(false)
         }

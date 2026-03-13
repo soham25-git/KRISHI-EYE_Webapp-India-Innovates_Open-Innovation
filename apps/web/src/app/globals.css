@@ -1,10 +1,10 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 @plugin "tailwindcss-animate";
 
 @custom-variant dark (&:is(.dark *));
 
 /* ── Premium Font Import ── */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 @theme {
   --color-background: var(--background);
@@ -273,6 +273,21 @@
     position: sticky;
     bottom: 0;
     z-index: 40;
+  }
+
+  /* Elegant minimal scrollbar */
+  .scrollbar-elegant::-webkit-scrollbar {
+    width: 6px;
+  }
+  .scrollbar-elegant::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-elegant::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 10px;
+  }
+  .scrollbar-elegant::-webkit-scrollbar-thumb:hover {
+    background: var(--muted-foreground);
   }
 }
 

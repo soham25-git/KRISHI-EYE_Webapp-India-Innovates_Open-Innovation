@@ -123,7 +123,7 @@ export default function AskAIPage() {
     }
 
     return (
-        <div className="flex flex-col flex-1 w-full max-w-5xl mx-auto" style={{ background: 'var(--background)' }}>
+        <div className="flex flex-col flex-1 w-full mx-auto transition-all duration-300" style={{ background: 'var(--background)' }}>
             {/* Header */}
             <div className="flex h-16 shrink-0 items-center justify-between px-6" style={{ borderBottom: '1px solid var(--border)' }}>
                 <div className="flex items-center gap-3">
@@ -158,7 +158,8 @@ export default function AskAIPage() {
             </div>
 
             {/* Messages area */}
-            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 scrollbar-elegant">
+                <div className="max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto w-full space-y-8">
                 {/* Image Scanner */}
                 {showScanner && (
                     <ImageAnalyzer onClose={() => setShowScanner(false)} />
@@ -182,11 +183,11 @@ export default function AskAIPage() {
                     </div>
                 ) : messages.length === 0 ? (
                     /* Empty state */
-                    <div className="flex flex-col items-center justify-center h-40 gap-3 text-center">
-                        <MessageSquare className="h-10 w-10" style={{ color: 'var(--muted-foreground)', opacity: 0.5 }} />
-                        <div>
-                            <p className="text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>No conversations yet</p>
-                            <p className="text-xs mt-1" style={{ color: 'var(--muted-foreground)', opacity: 0.7 }}>Ask a question about crops, pests, fertilizers, or spraying operations.</p>
+                    <div className="flex flex-col items-center justify-center py-20 md:py-32 gap-4 text-center">
+                        <MessageSquare className="h-12 w-12 md:h-16 md:w-16" style={{ color: 'var(--muted-foreground)', opacity: 0.3 }} />
+                        <div className="max-w-md">
+                            <p className="text-base md:text-lg font-bold" style={{ color: 'var(--foreground)' }}>Agri Advisory Intelligence</p>
+                            <p className="text-sm mt-1.5" style={{ color: 'var(--muted-foreground)', opacity: 0.8 }}>Ask about crops, pests, fertilizers, or spraying operations. Your questions are grounded in Indian agronomic databanks.</p>
                         </div>
                     </div>
                 ) : null}
@@ -195,7 +196,7 @@ export default function AskAIPage() {
                 {messages.map((msg) => (
                     <div
                         key={msg.id}
-                        className={`flex flex-col max-w-[85%] ${msg.role === 'user' ? 'ml-auto items-end' : 'mr-auto items-start'}`}
+                        className={`flex flex-col max-w-[90%] md:max-w-[80%] lg:max-w-[75%] ${msg.role === 'user' ? 'ml-auto items-end' : 'mr-auto items-start'}`}
                     >
                         <div
                             className="rounded-2xl px-5 py-3"
@@ -259,31 +260,33 @@ export default function AskAIPage() {
                         </div>
                     </div>
                 )}
+                </div>
             </div>
 
             {/* Input bar — sticky at bottom, keyboard-safe */}
-            <div className="shrink-0 p-3 sm:p-4 keyboard-safe" style={{ borderTop: '1px solid var(--border)', background: 'var(--surface)' }}>
-                <form onSubmit={handleSend} className="relative max-w-4xl mx-auto flex items-center">
+            <div className="shrink-0 p-4 md:p-6 lg:p-8 keyboard-safe" style={{ borderTop: '1px solid var(--border)', background: 'var(--surface)' }}>
+                <form onSubmit={handleSend} className="relative max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto flex items-center">
                     <input
                         type="text"
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         placeholder="Ask about crops, pests, fertilizers, spraying..."
-                        className="w-full rounded-full py-4 pl-6 pr-14 bg-transparent focus:outline-none transition-all"
+                        className="w-full rounded-2xl py-5 pl-7 pr-16 bg-transparent focus:ring-2 focus:ring-[var(--primary)] transition-all text-base md:text-lg"
                         style={{
                             border: '1px solid var(--border)',
                             background: 'var(--background)',
                             color: 'var(--foreground)',
+                            boxShadow: 'var(--shadow-sm)'
                         }}
                     />
                     <button
                         type="submit"
                         disabled={!input.trim() || sending}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full text-white transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                        style={{ background: 'var(--primary)', boxShadow: 'var(--shadow-md)' }}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 flex h-12 w-12 items-center justify-center rounded-xl text-white transition-all cursor-pointer hover:scale-105 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
+                        style={{ background: 'var(--primary)', boxShadow: 'var(--shadow-lg)' }}
                         aria-label="Send message"
                     >
-                        <Send className="h-4 w-4" />
+                        <Send className="h-5 w-5" />
                     </button>
                 </form>
             </div>

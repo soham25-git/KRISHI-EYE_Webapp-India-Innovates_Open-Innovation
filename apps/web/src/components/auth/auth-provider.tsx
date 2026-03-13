@@ -27,15 +27,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         const checkAuth = async () => {
+            // S-01: Prevent firing sessions check if we're explicitly on the login page
+            // to reduce noisy 401s during initial bootstrap.
+            if (window.location.pathname === '/login') {
+                setLoading(false);
+                return;
+            }
+
             try {
-                // If a valid HttpOnly cookie exists, the session route will succeed
                 const userData = await apiRequest<User>('/v1/auth/sessions');
                 setUser(userData);
             } catch (error) {
-                // Not authenticated or cookies expired
                 setUser(null);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
         checkAuth();
     }, []);
@@ -48,13 +54,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const login = async (phone: string, otp: string) => {
-        // Verification endpoint now attaches the HttpOnly cookies seamlessly
         await apiRequest('/v1/auth/verify-otp', {
             method: 'POST',
             body: JSON.stringify({ phone, otp }),
         });
         
-        // Immediately fetch the user using the newly set cookies
+        // S-01: Brief settling delay for mobile cookie propagation
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
         const userData = await apiRequest<User>('/v1/auth/sessions');
         setUser(userData);
         router.push('/');

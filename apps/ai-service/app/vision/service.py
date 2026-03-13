@@ -97,6 +97,27 @@ class VisionAnalysisService:
         self.detector_session = None
         self._initialized = False
         self._init_error: Optional[str] = None
+        self._missing_deps = False
+
+    def check_health(self) -> Dict[str, Any]:
+        """Verify that vision dependencies are installed and models are available."""
+        self._lazy_init()
+        
+        status = "ready"
+        if self._missing_deps:
+            status = "unavailable_deps"
+        elif self._init_error:
+            status = "unavailable_models"
+            
+        return {
+            "status": status,
+            "error": self._init_error,
+            "models": {
+                "detector": self.detector_session is not None,
+                "classifier": self.classifier_session is not None,
+                "segmentation": self.segmentation_session is not None
+            }
+        }
 
     def _lazy_init(self):
         """Lazy-load ONNX models on first use to avoid startup penalty."""
@@ -105,7 +126,17 @@ class VisionAnalysisService:
 
         try:
             import onnxruntime as ort
+            import numpy as np
+            from PIL import Image
+            import cv2
+        except ImportError as e:
+            self._missing_deps = True
+            self._init_error = f"Missing vision dependency: {str(e)}. Please install 'vision' extra."
+            logger.error(self._init_error)
+            self._initialized = True
+            return
 
+        try:
             classifier_path = MODELS_DIR / "potato_classifier_mobilenetv2.onnx"
             segmentation_path = MODELS_DIR / "lesion_segmentation_unet.onnx"
             detector_path = MODELS_DIR / "yolov8-seg.onnx"
@@ -131,12 +162,11 @@ class VisionAnalysisService:
             else:
                 logger.warning(f"Segmentation model not found: {segmentation_path}")
 
+            if not self.classifier_session:
+                self._init_error = "Critical vision models (classifier) could not be loaded."
+
             self._initialized = True
 
-        except ImportError:
-            self._init_error = "onnxruntime is not installed. Install with: pip install onnxruntime"
-            logger.error(self._init_error)
-            self._initialized = True
         except Exception as e:
             self._init_error = f"Failed to initialize vision models: {str(e)}"
             logger.error(self._init_error, exc_info=True)

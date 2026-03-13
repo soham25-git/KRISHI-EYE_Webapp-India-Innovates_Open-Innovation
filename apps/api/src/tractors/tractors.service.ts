@@ -1,23 +1,16 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
-import { Tractor } from '../database/entities/tractor.entity';
-import { FarmMember } from '../database/entities/farm-member.entity';
+import { PrismaService } from '../database/prisma.service';
 import { CreateTractorDto, UpdateTractorDto } from './dto/tractor.dto';
 
 @Injectable()
 export class TractorsService {
   constructor(
-    @InjectRepository(Tractor)
-    private tractorRepository: Repository<Tractor>,
-    @InjectRepository(FarmMember)
-    private memberRepository: Repository<FarmMember>,
+    private readonly prisma: PrismaService,
   ) { }
 
-  async create(dto: CreateTractorDto, userId: string): Promise<Tractor> {
-    // Permission check for farm
-    const member = await this.memberRepository.findOne({
-      where: { farm_id: dto.farm_id, user_id: userId }
+  async create(dto: CreateTractorDto, userId: string): Promise<any> {
+    const member = await this.prisma.farmMember.findFirst({
+      where: { farmId: dto.farm_id, userId: userId }
     });
     if (!member) {
       throw new ForbiddenException('Not a member of the target farm');
@@ -26,27 +19,33 @@ export class TractorsService {
       throw new ForbiddenException('Only farm owners can register tractors');
     }
 
-    const tractor = this.tractorRepository.create(dto);
-    return this.tractorRepository.save(tractor);
+    return this.prisma.tractor.create({
+      data: {
+        farmId: dto.farm_id,
+        label: dto.label,
+        description: dto.description,
+        colorHex: dto.color_hex,
+      }
+    });
   }
 
-  async findAll(userId: string): Promise<Tractor[]> {
-    const memberships = await this.memberRepository.find({
-      where: { user_id: userId }
+  async findAll(userId: string): Promise<any[]> {
+    const memberships = await this.prisma.farmMember.findMany({
+      where: { userId: userId }
     });
-    const farmIds = memberships.map(m => m.farm_id);
+    const farmIds = memberships.map(m => m.farmId);
     if (farmIds.length === 0) return [];
 
-    return this.tractorRepository.find({
-      where: { farm_id: In(farmIds) },
-      relations: ['farm'],
+    return this.prisma.tractor.findMany({
+      where: { farmId: { in: farmIds } },
+      include: { farm: true },
     });
   }
 
-  async findOne(id: string): Promise<Tractor> {
-    const tractor = await this.tractorRepository.findOne({
+  async findOne(id: string): Promise<any> {
+    const tractor = await this.prisma.tractor.findUnique({
       where: { id },
-      relations: ['farm'],
+      include: { farm: true },
     });
     if (!tractor) {
       throw new NotFoundException(`Tractor with ID ${id} not found`);
@@ -54,14 +53,20 @@ export class TractorsService {
     return tractor;
   }
 
-  async update(id: string, dto: UpdateTractorDto): Promise<Tractor> {
-    const tractor = await this.findOne(id);
-    Object.assign(tractor, dto);
-    return this.tractorRepository.save(tractor);
+  async update(id: string, dto: UpdateTractorDto): Promise<any> {
+    await this.findOne(id);
+    return this.prisma.tractor.update({
+      where: { id },
+      data: {
+        label: dto.label,
+        description: dto.description,
+        colorHex: dto.color_hex,
+      }
+    });
   }
 
   async remove(id: string): Promise<void> {
-    const tractor = await this.findOne(id);
-    await this.tractorRepository.remove(tractor);
+    await this.findOne(id);
+    await this.prisma.tractor.delete({ where: { id } });
   }
 }

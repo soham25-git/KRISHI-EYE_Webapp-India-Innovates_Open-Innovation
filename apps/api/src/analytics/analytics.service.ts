@@ -1,49 +1,33 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
-import { OperationJob } from '../database/entities/operation-job.entity';
-import { FarmMember } from '../database/entities/farm-member.entity';
-import { Farm } from '../database/entities/farm.entity';
-import { TelemetryPoint } from '../database/entities/telemetry-point.entity';
+import { PrismaService } from '../database/prisma.service';
 
 @Injectable()
 export class AnalyticsService {
   constructor(
-    @InjectRepository(OperationJob)
-    private jobRepository: Repository<OperationJob>,
-    @InjectRepository(Farm)
-    private farmRepository: Repository<Farm>,
-    @InjectRepository(FarmMember)
-    private memberRepository: Repository<FarmMember>,
-    @InjectRepository(TelemetryPoint)
-    private telemetryRepository: Repository<TelemetryPoint>,
+    private readonly prisma: PrismaService,
   ) { }
 
   async getOverview(userId: string) {
-    const memberships = await this.memberRepository.find({ where: { user_id: userId } });
-    const farmIds = memberships.map(m => m.farm_id);
+    const memberships = await this.prisma.farmMember.findMany({ where: { userId: userId } });
+    const farmIds = memberships.map(m => m.farmId);
     if (farmIds.length === 0) {
       return { totalFarms: 0, activeJobs: 0, totalDistanceM: 0 };
     }
 
-    // This query is slightly complex to do in a single pass without query builder.
-    // We'll do multiple queries for clarity and SQLite compatibility.
-    const activeJobs = await this.jobRepository.count({
+    const activeJobs = await this.prisma.operationJob.count({
       where: {
         status: 'running',
-        tractor: { farm_id: In(farmIds) }
-      } as any,
-      relations: ['tractor']
+        tractor: { farmId: { in: farmIds } }
+      }
     });
 
-    const jobs = await this.jobRepository.find({
+    const jobs = await this.prisma.operationJob.findMany({
       where: {
-        tractor: { farm_id: In(farmIds) }
-      } as any,
-      relations: ['tractor']
+        tractor: { farmId: { in: farmIds } }
+      }
     });
 
-    const totalDistanceM = jobs.reduce((sum, job) => sum + (Number(job.total_distance_m) || 0), 0);
+    const totalDistanceM = jobs.reduce((sum, job) => sum + (Number(job.totalDistanceM) || 0), 0);
 
     return {
       totalFarms: farmIds.length,
@@ -54,29 +38,24 @@ export class AnalyticsService {
   }
 
   async getFarmImprovement(farmId: string) {
-    // Dynamic derivation from job performance
-    const jobs = await this.jobRepository.find({
-      where: { tractor: { farm_id: farmId } } as any,
-      relations: ['tractor'],
-      order: { created_at: 'ASC' }
+    const jobs = await this.prisma.operationJob.findMany({
+      where: { tractor: { farmId: farmId } },
+      orderBy: { createdAt: 'asc' }
     });
 
-    // Group jobs by some period or just return a list of performance markers
     return jobs.map(j => ({
       jobId: j.id,
-      date: j.created_at,
-      avgSpeed: j.avg_speed_kmph,
-      distance: j.total_distance_m,
+      date: j.createdAt,
+      avgSpeed: j.avgSpeedKmph,
+      distance: j.totalDistanceM,
       status: j.status
     }));
   }
 
   async getFarmTimeline(farmId: string) {
-    // For now, return recent job events as a timeline
-    const jobs = await this.jobRepository.find({
-      where: { tractor: { farm_id: farmId } } as any,
-      relations: ['tractor'],
-      order: { created_at: 'DESC' },
+    const jobs = await this.prisma.operationJob.findMany({
+      where: { tractor: { farmId: farmId } },
+      orderBy: { createdAt: 'desc' },
       take: 20
     });
 
@@ -84,37 +63,44 @@ export class AnalyticsService {
       type: 'job',
       id: j.id,
       status: j.status,
-      timestamp: j.updated_at
+      timestamp: j.updatedAt
     }));
   }
 
   async getJobSummary(jobId: string) {
-    const job = await this.jobRepository.findOne({
+    const job = await this.prisma.operationJob.findUnique({
       where: { id: jobId },
-      relations: ['field', 'tractor']
+      include: { 
+        field: true, 
+        tractor: true 
+      }
     });
 
     if (!job) throw new NotFoundException('Job not found');
 
-    // Calculate dynamic stats from telemetry if needed, or return persisted job metrics
-    const telemetryStats = await this.telemetryRepository
-      .createQueryBuilder('tp')
-      .where('tp.job_id = :jobId', { jobId })
-      .select('MAX(tp.infection_intensity)', 'maxInfection')
-      .addSelect('AVG(tp.speed_kmph)', 'avgSpeed')
-      .getRawOne();
+    // For complex aggregations on large tables, or those involving BigInt/Unsupported, 
+    // sometimes raw SQL is clearer.
+    const stats: any[] = await this.prisma.$queryRaw`
+      SELECT 
+        MAX(infection_intensity) as "maxInfection",
+        AVG(speed_kmph) as "avgSpeed"
+      FROM telemetry_points
+      WHERE job_id = ${jobId}
+    `;
+    
+    const telemetryStats = stats[0] || {};
 
     return {
       jobId: job.id,
       field: job.field.name,
       tractor: job.tractor.label,
       status: job.status,
-      durationMinutes: job.started_at && job.ended_at ?
-        Math.floor((job.ended_at.getTime() - job.started_at.getTime()) / 60000) : 0,
-      distanceM: job.total_distance_m,
-      avgSpeedKmph: telemetryStats.avgSpeed || job.avg_speed_kmph,
+      durationMinutes: job.startedAt && job.endedAt ?
+        Math.floor((job.endedAt.getTime() - job.startedAt.getTime()) / 60000) : 0,
+      distanceM: job.totalDistanceM,
+      avgSpeedKmph: telemetryStats.avgSpeed || job.avgSpeedKmph,
       maxInfection: telemetryStats.maxInfection || 0,
-      coverage: job.coverage_summary
+      coverage: job.coverageSummary
     };
   }
 }

@@ -51,15 +51,16 @@ export default function LoginPage() {
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
+        if (loading || otp.length < 6) return
+        
         setError('')
         setLoading(true)
         try {
             const normalized = normalizePhone(phone)
             await login(normalized, otp)
         } catch (error: any) {
-            setError(error?.message || 'Login failed due to a server issue. Please try again.')
-        } finally {
-            setLoading(false)
+            setError(error?.message || 'Login failed. Please try again.')
+            setLoading(false) // Only reset loading on error; success will redirect
         }
     }
 

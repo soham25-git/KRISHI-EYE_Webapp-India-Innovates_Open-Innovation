@@ -1,25 +1,24 @@
 import { Injectable, UnauthorizedException, BadRequestException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThan, IsNull } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
-
-import { User } from '../database/entities/user.entity';
-import { Session } from '../database/entities/session.entity';
+import { PrismaService } from '../database/prisma.service';
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
-  // In-memory store for OTPs (for MVP, replacing with Redis later)
-  private otps: Record<string, { otp: string; expiresAt: Date; attempts: number }> = {};
+  // In-memory store for OTPs
+  private otps: Record<string, { 
+    otp: string; 
+    expiresAt: Date; 
+    attempts: number;
+    verifiedAt?: Date; // For idempotency grace window
+    lastTokens?: { access_token: string; refresh_token: string };
+  }> = {};
 
   constructor(
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
-    @InjectRepository(Session)
-    private readonly sessionRepository: Repository<Session>,
+    private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
   ) { }
 
@@ -34,6 +33,15 @@ export class AuthService {
   async requestOtp(phoneInput: string, ip: string): Promise<void> {
     const phone = this.normalizePhone(phoneInput);
     const now = new Date();
+    
+    // Clean up old verified records for this phone if they are past the grace window
+    if (this.otps[phone]?.verifiedAt) {
+        const diff = now.getTime() - this.otps[phone].verifiedAt!.getTime();
+        if (diff > 10000) {
+            delete this.otps[phone];
+        }
+    }
+
     if (this.otps[phone] && this.otps[phone].attempts >= 5) {
       throw new BadRequestException('Too many failed attempts. Try again later.');
     }
@@ -59,6 +67,15 @@ export class AuthService {
       throw new UnauthorizedException('No OTP requested or OTP expired.');
     }
 
+    // S-01: Grace window for duplicate mobile hits
+    if (record.verifiedAt && record.lastTokens) {
+        const diff = new Date().getTime() - record.verifiedAt.getTime();
+        if (diff < 10000) { // 10 second window
+            this.logger.debug(`Grace window hit for phone ${phone}. Returning previous tokens.`);
+            return record.lastTokens;
+        }
+    }
+
     if (record.expiresAt < new Date()) {
       delete this.otps[phone];
       throw new UnauthorizedException('OTP expired.');
@@ -73,39 +90,48 @@ export class AuthService {
       throw new UnauthorizedException('Invalid OTP.');
     }
 
-    delete this.otps[phone];
-
-    let user = await this.userRepository.findOne({ where: { phone } });
+    // Step 1: Get or Create User via Prisma
+    let user = await this.prisma.user.findUnique({ where: { phone } });
     if (!user) {
-      user = this.userRepository.create({
-        phone,
-        role: 'farmer',
-        updated_at: new Date(),
+      user = await this.prisma.user.create({
+        data: {
+          phone,
+          role: 'farmer',
+        }
       });
-      user = await this.userRepository.save(user);
     }
 
-    return await this.generateTokens(user.id, ip, userAgent);
+    const tokens = await this.generateTokens(user.id, ip, userAgent);
+
+    // Step 2: Mark as verified for the grace window instead of immediate deletion
+    record.verifiedAt = new Date();
+    record.lastTokens = tokens;
+    
+    // We don't delete immediately to allow for Lagoon/Mobile duplicate hits
+    // Cleanup happens in requestOtp or after 10s if we wanted a timer, but requestOtp is sufficient.
+
+    return tokens;
   }
 
   async refreshToken(refreshToken: string, ip: string, userAgent: string) {
     if (!refreshToken) throw new UnauthorizedException('No refresh token provided.');
 
-    const sessions = await this.sessionRepository.find({
+    // We search across all active sessions
+    const sessions = await this.prisma.session.findMany({
       where: {
-        expires_at: MoreThan(new Date()),
-        revoked_at: IsNull()
-      },
+        expiresAt: { gt: new Date() },
+        revokedAt: null
+      }
     });
 
     let foundSession = null;
     let userId = null;
 
     for (const s of sessions) {
-      const isMatch = await bcrypt.compare(refreshToken, s.refresh_token_hash);
+      const isMatch = await bcrypt.compare(refreshToken, s.refreshTokenHash);
       if (isMatch) {
         foundSession = s;
-        userId = s.user_id;
+        userId = s.userId;
         break;
       }
     }
@@ -114,33 +140,32 @@ export class AuthService {
       throw new UnauthorizedException('Invalid or expired refresh token.');
     }
 
-    foundSession.revoked_at = new Date();
-    await this.sessionRepository.save(foundSession);
+    // Revoke old session
+    await this.prisma.session.update({
+      where: { id: foundSession.id },
+      data: { revokedAt: new Date() }
+    });
 
     return await this.generateTokens(userId, ip, userAgent);
   }
 
   async logout(userId: string) {
-    const activeSessions = await this.sessionRepository.find({
-      where: { user_id: userId, revoked_at: IsNull() }
+    await this.prisma.session.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() }
     });
-
-    for (const session of activeSessions) {
-      session.revoked_at = new Date();
-    }
-    await this.sessionRepository.save(activeSessions);
   }
 
   async getSessions(userId: string) {
-    const sessions = await this.sessionRepository.find({
-      where: { user_id: userId, revoked_at: IsNull() }
+    const sessions = await this.prisma.session.findMany({
+      where: { userId, revokedAt: null }
     });
     return sessions.map(s => ({
       id: s.id,
-      deviceLabel: s.device_label,
-      ipAddress: s.ip_address,
-      createdAt: s.created_at,
-      expiresAt: s.expires_at,
+      deviceLabel: s.deviceLabel,
+      ipAddress: s.ipAddress,
+      createdAt: s.createdAt,
+      expiresAt: s.expiresAt,
     }));
   }
 
@@ -154,15 +179,15 @@ export class AuthService {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
 
-    const newSession = this.sessionRepository.create({
-      user_id: userId,
-      refresh_token_hash: hashedRefreshToken,
-      ip_address: ipAddress || 'Unknown',
-      user_agent: userAgent || 'Unknown',
-      expires_at: expiresAt,
+    const newSession = await this.prisma.session.create({
+      data: {
+        userId: userId,
+        refreshTokenHash: hashedRefreshToken,
+        ipAddress: ipAddress || 'Unknown',
+        userAgent: userAgent || 'Unknown',
+        expiresAt: expiresAt,
+      }
     });
-
-    await this.sessionRepository.save(newSession);
 
     return {
       access_token: accessToken,

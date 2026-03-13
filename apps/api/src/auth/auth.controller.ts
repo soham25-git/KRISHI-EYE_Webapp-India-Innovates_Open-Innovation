@@ -57,15 +57,17 @@ export class AuthController {
       
       // Cookie Security Options
       const isProd = process.env.NODE_ENV === 'production';
-    const cookieOptions = {
+      const cookieOptions = {
         httpOnly: true,
         secure: isProd,
+        // S-01: sameSite 'none' + secure is mandatory for cross-site cookies (Render/Mobile)
+        // If sameSite 'lax', mobile browsers may block cookies in some WebView/redirect contexts.
         sameSite: isProd ? ('none' as const) : ('lax' as const),
         path: '/'
-    };
+      };
 
-    res.cookie('krishi_auth_token', tokens.access_token, { ...cookieOptions, maxAge: 15 * 60 * 1000 }); // 15m
-    res.cookie('krishi_refresh_token', tokens.refresh_token, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 }); // 7d
+      res.cookie('krishi_auth_token', tokens.access_token, { ...cookieOptions, maxAge: 15 * 60 * 1000 }); // 15m
+      res.cookie('krishi_refresh_token', tokens.refresh_token, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 }); // 7d
 
       return tokens;
     } catch (e: any) {

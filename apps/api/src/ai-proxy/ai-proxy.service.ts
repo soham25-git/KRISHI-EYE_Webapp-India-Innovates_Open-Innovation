@@ -111,18 +111,21 @@ export class AiProxyService {
 
       return response.data;
     } catch (error: any) {
-      console.error('Vision analysis proxy error:', error.message);
-      return {
-        status: 'error',
-        confidence: 0,
-        message: 'Image analysis service is currently unavailable. Please try again later.',
-        advisory: {
-          situation: 'The analysis service could not process your image at this time.',
-          recommendation: 'Please try again in a few minutes, or consult your local KVK.',
-          action: 'If the condition appears urgent, contact the Kisan Call Centre at 1800-180-1551.',
-          safety_note: 'Do not apply pesticides without confirmed diagnosis.',
-        }
-      };
+      if (error.response) {
+        // AI service returned a specific error (e.g., 503, 413, 500)
+        const status = error.response.status;
+        const detail = error.response.data?.detail || error.message;
+        throw new (require('@nestjs/common').HttpException)(
+          detail,
+          status
+        );
+      }
+      
+      console.error('Vision analysis proxy connectivity error:', error.message);
+      throw new (require('@nestjs/common').ServiceUnavailableException)(
+        'Image analysis service is temporarily unreachable.'
+      );
     }
   }
 }
+
