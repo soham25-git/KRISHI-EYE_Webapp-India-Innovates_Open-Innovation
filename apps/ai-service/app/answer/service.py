@@ -101,7 +101,6 @@ class AnswerService:
         # 5. Abstention Check
         abstained = False
         abstained_reason = None
-        answer_text = llm_resp.text
         action_cards = []
         
         if confidence < settings.abstention_threshold:
