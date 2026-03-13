@@ -19,12 +19,12 @@ WORKDIR /app/apps/api
 RUN npx prisma generate
 RUN pnpm run build
 
-# Production Stage
+# ---- Production Stage ----
 FROM node:20-alpine AS production
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
-# Copy monorepo structure needed for production
+# Copy monorepo structure (no node_modules — we reinstall fresh to avoid broken pnpm symlinks)
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/pnpm-workspace.yaml ./
 COPY --from=builder /app/pnpm-lock.yaml ./
@@ -32,12 +32,15 @@ COPY --from=builder /app/packages ./packages
 COPY --from=builder /app/apps/api/package.json ./apps/api/package.json
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
-COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
 
+# Install production deps fresh (fixes pnpm symlink issue)
+RUN pnpm install --prod --no-frozen-lockfile --ignore-scripts
+
+# Generate Prisma client in production image
 WORKDIR /app/apps/api
+RUN npx prisma generate
 
 ENV NODE_ENV=production
 
-# Run Prisma migrations then start the API
-# 0.0.0.0 binding is handled in main.ts for Render port detection
+# Run migrations then start (0.0.0.0 binding handled in main.ts)
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
