@@ -1,6 +1,10 @@
 # Production Dockerfile for NestJS API
 FROM node:20-alpine AS builder
 WORKDIR /app
+
+# Install OpenSSL (required by Prisma engine)
+RUN apk add --no-cache openssl
+
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # Copy monorepo config + workspace packages
@@ -22,9 +26,13 @@ RUN pnpm run build
 # ---- Production Stage ----
 FROM node:20-alpine AS production
 WORKDIR /app
+
+# Install OpenSSL (required by Prisma engine at runtime)
+RUN apk add --no-cache openssl
+
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
-# Copy monorepo structure (no node_modules — we reinstall fresh to avoid broken pnpm symlinks)
+# Copy monorepo structure (no node_modules — reinstall fresh to avoid broken pnpm symlinks)
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/pnpm-workspace.yaml ./
 COPY --from=builder /app/pnpm-lock.yaml ./
