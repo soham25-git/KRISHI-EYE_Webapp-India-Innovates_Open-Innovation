@@ -1,10 +1,12 @@
-# Production Dockerfile for NestJS API
-FROM node:20-alpine AS builder
+# Production Dockerfile for NestJS API — single-stage for reliability
+FROM node:20-alpine
+
 WORKDIR /app
 
-# Install OpenSSL (required by Prisma engine)
+# System deps (OpenSSL required by Prisma engine)
 RUN apk add --no-cache openssl
 
+# Enable pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # Copy monorepo config + workspace packages
@@ -12,43 +14,19 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/api/package.json ./apps/api/
 COPY packages/ ./packages/
 
-# Install all dependencies (including dev for build tooling)
+# Install all dependencies
 RUN pnpm install --no-frozen-lockfile --ignore-scripts
 
 # Copy backend source
 COPY apps/api/ ./apps/api/
 
-# Generate prisma client & build
+# Generate Prisma client & build NestJS
 WORKDIR /app/apps/api
 RUN npx prisma generate
 RUN pnpm run build
 
-# ---- Production Stage ----
-FROM node:20-alpine AS production
-WORKDIR /app
-
-# Install OpenSSL (required by Prisma engine at runtime)
-RUN apk add --no-cache openssl
-
-RUN corepack enable && corepack prepare pnpm@latest --activate
-
-# Copy package files first for dependency install
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/pnpm-workspace.yaml ./
-COPY --from=builder /app/pnpm-lock.yaml ./
-COPY --from=builder /app/packages ./packages
-COPY --from=builder /app/apps/api/package.json ./apps/api/package.json
-
-# Install production deps fresh (fixes pnpm symlink issue)
-RUN pnpm install --prod --no-frozen-lockfile --ignore-scripts
-
-# Copy built artifacts AFTER pnpm install (pnpm may overwrite apps/api/ directory)
-COPY --from=builder /app/apps/api/dist ./apps/api/dist
-COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
-
-# Generate Prisma client in production image
-WORKDIR /app/apps/api
-RUN npx prisma generate
+# Verify dist exists (fail fast if build broken)
+RUN ls -la dist/main.js
 
 ENV NODE_ENV=production
 
